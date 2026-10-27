@@ -34,7 +34,7 @@
   def fmt_pm(unc_mm) -> str:  # '± 1/16"', or '± <1/16"' when it rounds to zero
   ```
   Pair B: show `f"{fmt_ft_in(mm)} {fmt_pm(unc)}"` plus `warn` as a caption. About 50 ms per call, so cache by `(p1, p2)`. Area mode stays without ±.
-- [ ] ✨ **A13. Stress test on synthetic photos** (on hold; about 15 min). Sweep camera angle (0–70°) and board size in the frame; record detection yes/no and error. Output: a small table like "≤45°: under 1/16" · 60°: 1/8" · >70°: not found". It gives tested numbers for the capture-rules cartoon (to Pair C) and a pitch slide. Caveat: synthetic photos are optimistic; Pair C's real error table is the final word. Extend `selftest.py` or add `stress_test.py`.
+- [x] ✨ **A13. Stress test on synthetic photos.** ✅ `stress_test.py`; results and capture rules are in `plan/A13_stress_results.md`. Next to the board: about 1/32" typical from 3–10 ft up to 45°. A 48" reach from a 7" board: 0.5–3" (the ± flags it). The ± is honest: 97% coverage. Sweep camera angle (0–70°) and board size in the frame; record detection yes/no and error. Output: a small table like "≤45°: under 1/16" · 60°: 1/8" · >70°: not found". It gives tested numbers for the capture-rules cartoon (to Pair C) and a pitch slide. Caveat: synthetic photos are optimistic; Pair C's real error table is the final word. Extend `selftest.py` or add `stress_test.py`.
 - [ ] ✨ **A11. Future-feature spike: AI chat reports a dimension.** Prototype only, not wired into the app. Good for the roadmap slide.
 
 ## Status (update at each checkpoint)
