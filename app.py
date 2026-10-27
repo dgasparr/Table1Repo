@@ -1,0 +1,416 @@
+"""Streamlit UI. Owner: Pair B (Yang + David).
+
+Rule: no OpenCV math here. Everything geometric goes through measure.py:
+    detect, distance_mm, area_mm2, fmt_ft_in, draw_overlay
+Every point handed to measure.py is in FULL-RESOLUTION image pixels.
+"""
+from __future__ import annotations
+
+import io
+from pathlib import Path
+
+import numpy as np
+import streamlit as st
+from PIL import Image, ImageDraw, ImageFont, ImageOps
+from streamlit_image_coordinates import streamlit_image_coordinates
+
+import measure
+
+# ----------------------------------------------------------------------------
+# Config
+# ----------------------------------------------------------------------------
+# On-screen viewing box. Every photo is shown inside this frame regardless of
+# its pixel size (landscape fills the width, portrait fills the height).
+VIEW_W = 900                  # CSS px, default; adjustable in the sidebar
+VIEW_H = 600
+# Data copy sent to the browser: 2x the view so high-DPI screens stay sharp.
+# Clicks happen on this copy and are scaled back to full-res.
+DISPLAY_WIDTH = 2 * VIEW_W
+CAPTURE_RULES = Path(__file__).parent / "assets" / "capture_rules.png"
+PLANE_WARNING = "Only measure points on the same flat surface as the board."
+HOW_IT_WORKS = (
+    "Tape the hand-drawn marker board flat on the surface, take a photo, "
+    "upload it, click two points on that same surface, read the length."
+)
+
+GRADE_ICON = {"green": "🟢", "yellow": "🟡", "red": "🔴", "none": "⚪"}
+LINE_COLORS = ["#ff2d55", "#ff9500", "#5ac8fa", "#ffcc00", "#af52de", "#34c759"]
+
+st.set_page_config(page_title="Site Photo Measure", page_icon="📐", layout="wide")
+
+st.markdown(
+    """
+    <style>
+      .big-result { font-size: 3.2rem; font-weight: 700; line-height: 1.1; margin: 0.2rem 0; }
+      .sub-result { font-size: 1.1rem; color: #777; }
+      .badge { font-size: 1.3rem; font-weight: 600; }
+      div[data-testid="stFileUploader"] label { font-size: 1.1rem; }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+# ----------------------------------------------------------------------------
+# Session state
+# ----------------------------------------------------------------------------
+def _init_state() -> None:
+    ss = st.session_state
+    ss.setdefault("image_key", None)      # identifies the current upload
+    ss.setdefault("bgr", None)            # full-res BGR array
+    ss.setdefault("det", None)            # measure.Detection
+    ss.setdefault("points", [])           # in-progress clicks, full-res (x, y)
+    ss.setdefault("measurements", [])     # dicts: label, kind, mm/mm2, points
+    ss.setdefault("last_click", None)     # dedupe the component's repeated value
+    ss.setdefault("click_nonce", 0)       # bump to reset the click component
+
+
+def _reset_for_new_image() -> None:
+    ss = st.session_state
+    ss.points = []
+    ss.measurements = []
+    ss.last_click = None
+    ss.click_nonce += 1
+
+
+def _clear_points() -> None:
+    st.session_state.points = []
+    st.session_state.last_click = None
+    st.session_state.click_nonce += 1
+
+
+_init_state()
+
+# ----------------------------------------------------------------------------
+# Helpers (image IO and drawing only; no measurement math)
+# ----------------------------------------------------------------------------
+def load_bgr(uploaded) -> np.ndarray:
+    """Decode an upload to a full-res BGR array, honouring EXIF rotation."""
+    img = Image.open(uploaded)
+    img = ImageOps.exif_transpose(img).convert("RGB")
+    rgb = np.asarray(img)
+    return np.ascontiguousarray(rgb[:, :, ::-1])
+
+
+def bgr_to_pil(bgr: np.ndarray) -> Image.Image:
+    return Image.fromarray(np.ascontiguousarray(bgr[:, :, ::-1]))
+
+
+def fmt_length(mm: float, units: str) -> str:
+    if units == "ft-in":
+        return measure.fmt_ft_in(mm)
+    if units == "mm":
+        return f"{mm:,.1f} mm"
+    return f'{mm / 25.4:,.2f}"'
+
+
+def fmt_area(mm2: float) -> str:
+    ft2 = mm2 / 92_903.04
+    m2 = mm2 / 1_000_000.0
+    return f"{ft2:,.2f} ft²  ·  {m2:,.3f} m²"
+
+
+def _font(size: int) -> ImageFont.ImageFont:
+    for name in ("arial.ttf", "DejaVuSans.ttf"):
+        try:
+            return ImageFont.truetype(name, size)
+        except OSError:
+            continue
+    try:
+        return ImageFont.load_default(size=size)
+    except TypeError:  # old Pillow
+        return ImageFont.load_default()
+
+
+def _label(draw: ImageDraw.ImageDraw, xy, text: str, color: str, font) -> None:
+    x, y = xy
+    l, t, r, b = draw.textbbox((x, y), text, font=font)
+    pad = max(2, font.size // 6)
+    draw.rectangle((l - pad, t - pad, r + pad, b + pad), fill="black")
+    draw.text((x, y), text, fill=color, font=font)
+
+
+def draw_annotations(
+    img: Image.Image,
+    scale: float,
+    measurements: list[dict],
+    points: list[tuple[float, float]],
+    units: str,
+) -> Image.Image:
+    """Draw finished measurements and in-progress points on a copy of img.
+
+    scale = img_width / full_res_width (points are stored full-res).
+    Marker sizes are relative to the image width, so they look the same on the
+    screen copy and on the full-res download.
+    """
+    out = img.copy()
+    d = ImageDraw.Draw(out)
+    W = out.width
+    w = max(2, W // 600)                 # stroke
+    r = max(6, W // 160)                 # crosshair ring radius
+    font = _font(max(16, W // 55))
+
+    def s(p):
+        return (p[0] * scale, p[1] * scale)
+
+    def crosshair(p, color, halo=False):
+        x, y = p
+        if halo:  # dark outline so a white marker stays visible on light surfaces
+            d.ellipse((x - r - 1, y - r - 1, x + r + 1, y + r + 1), outline="black", width=w + 2)
+        d.ellipse((x - r, y - r, x + r, y + r), outline=color, width=w)
+        gap = r // 3
+        d.line((x - r - gap, y, x - gap, y), fill=color, width=w)
+        d.line((x + gap, y, x + r + gap, y), fill=color, width=w)
+        d.line((x, y - r - gap, x, y - gap), fill=color, width=w)
+        d.line((x, y + gap, x, y + r + gap), fill=color, width=w)
+        d.ellipse((x - 1, y - 1, x + 1, y + 1), fill=color)   # exact centre
+
+    for i, m in enumerate(measurements):
+        color = LINE_COLORS[i % len(LINE_COLORS)]
+        pts = [s(p) for p in m["points"]]
+        if m["kind"] == "length":
+            d.line(pts, fill=color, width=w)
+            mid = ((pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2)
+            text = f'{m["label"]}: {fmt_length(m["mm"], units)}'
+        else:
+            d.polygon(pts, outline=color, width=w)
+            mid = (sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
+            text = f'{m["label"]}: {fmt_area(m["mm2"])}'
+        for p in pts:
+            crosshair(p, color)
+        _label(d, (mid[0] + r, mid[1] + r), text, color, font)
+
+    # in-progress points
+    if points:
+        pts = [s(p) for p in points]
+        if len(pts) >= 2:
+            d.line(pts, fill="#ffffff", width=w)
+        for p in pts:
+            crosshair(p, "#ffffff", halo=True)
+    return out
+
+
+# ----------------------------------------------------------------------------
+# Sidebar
+# ----------------------------------------------------------------------------
+with st.sidebar:
+    st.header("Settings")
+    mode = st.radio("Mode", ["Length (2 points)", "Area (N points)"], index=0)
+    units = st.radio("Units", ["ft-in", "mm", "decimal inches"], index=0, horizontal=True)
+    view_w = st.slider("Image size (px wide)", 500, 1600, VIEW_W, step=50)
+    view_h = round(view_w * VIEW_H / VIEW_W)
+    st.caption(PLANE_WARNING)
+
+    st.divider()
+    st.subheader("Capture rules")
+    if CAPTURE_RULES.exists():
+        st.image(str(CAPTURE_RULES), width="stretch")
+    else:
+        st.markdown(
+            "- ✅ 3–10 ft away, within 45° of straight-on\n"
+            "- ✅ Whole board in frame, paper flat, 1× lens\n"
+            "- ❌ 0.5× lens, board cut off or at the edge\n"
+            "- ❌ Steep angle, curled paper, glare\n"
+            "- ❌ Measuring off the board's surface\n\n"
+            "*(Cartoon from Pair C appears here once `assets/capture_rules.png` lands.)*"
+        )
+
+# ----------------------------------------------------------------------------
+# Main
+# ----------------------------------------------------------------------------
+st.title("📐 Site Photo Measure")
+st.markdown(f"**How it works:** {HOW_IT_WORKS}")
+
+uploaded = st.file_uploader(
+    "Upload a photo (phones: choose *Take Photo*)",
+    type=["jpg", "jpeg", "png"],
+    accept_multiple_files=False,
+)
+
+if uploaded is None:
+    st.session_state.image_key = None
+    st.session_state.bgr = None
+    st.session_state.det = None
+    st.info("Upload a photo that shows the whole marker board to begin.")
+    st.stop()
+
+# Decode + detect once per upload (not on every click).
+image_key = (uploaded.name, uploaded.size)
+if st.session_state.image_key != image_key:
+    with st.spinner("Detecting markers…"):
+        bgr = load_bgr(uploaded)
+        det = measure.detect(bgr)
+    st.session_state.image_key = image_key
+    st.session_state.bgr = bgr
+    st.session_state.det = det
+    _reset_for_new_image()
+
+bgr: np.ndarray = st.session_state.bgr
+det: measure.Detection = st.session_state.det
+full_h, full_w = bgr.shape[:2]
+
+# --- Badge ------------------------------------------------------------------
+icon = GRADE_ICON.get(det.grade, "⚪")
+rms = f"{det.rms_mm:.2f} mm fit" if det.rms_mm is not None else "no fit"
+ids = ", ".join(str(i) for i in det.ids) if det.ids else "none"
+badge_text = f"{icon} **{det.grade.upper()}** · {rms} · markers {ids} · {det.message}"
+
+if not det.found:
+    st.error(
+        "**Marker board not found.** Make sure the whole board is in the frame, "
+        "flat, well lit, and shot with the 1× lens from 3–10 ft. "
+        "See **Capture rules** in the sidebar. " + (det.message or "")
+    )
+elif det.grade == "green":
+    st.success(badge_text)
+elif det.grade == "yellow":
+    st.warning(badge_text)
+else:
+    st.error(badge_text)
+
+st.caption(f"⚠️ {PLANE_WARNING}")
+
+# --- Image with overlay + click handling ------------------------------------
+overlay_bgr = measure.draw_overlay(bgr, det) if det.found else bgr
+overlay_pil = bgr_to_pil(overlay_bgr)
+
+# Fixed viewing box: fit the photo inside view_w x view_h, keeping its aspect.
+aspect = full_w / full_h
+box_w = round(min(view_w, view_h * aspect))
+disp_w = min(2 * box_w, full_w)                 # 2x for high-DPI sharpness
+disp_h = max(1, round(full_h * disp_w / full_w))
+display = overlay_pil.resize((disp_w, disp_h), Image.LANCZOS)
+scale_disp = disp_w / full_w           # full-res -> display
+
+is_area = mode.startswith("Area")
+needed = None if is_area else 2
+
+col_img, col_side = st.columns([3, 1], gap="large")
+
+with col_side:
+    st.subheader("Measure")
+    next_n = len(st.session_state.measurements) + 1
+    label = st.text_input("Label for next measurement", value=f"M{next_n}")
+
+    b1, b2 = st.columns(2)
+    if b1.button("Clear points", width="stretch"):
+        _clear_points()
+        st.rerun()
+    if b2.button("Undo last", width="stretch", disabled=not st.session_state.measurements):
+        st.session_state.measurements.pop()
+        st.rerun()
+    if is_area:
+        if st.button(
+            "Close shape",
+            type="primary",
+            width="stretch",
+            disabled=not (det.found and len(st.session_state.points) >= 3),
+        ):
+            pts = list(st.session_state.points)
+            mm2 = measure.area_mm2(det.H, pts)
+            st.session_state.measurements.append(
+                {"label": label, "kind": "area", "mm2": mm2, "points": pts}
+            )
+            _clear_points()
+            st.rerun()
+    n_pts = len(st.session_state.points)
+    if is_area:
+        st.caption(f"{n_pts} point(s) clicked. Click ≥3, then **Close shape**.")
+    else:
+        st.caption(f"{n_pts}/2 points clicked. A third click starts a new line.")
+
+with col_img:
+    annotated = draw_annotations(
+        display, scale_disp, st.session_state.measurements, st.session_state.points, units
+    )
+    if det.found:
+        click = streamlit_image_coordinates(
+            annotated,
+            key=f"click_{st.session_state.click_nonce}",
+            width=box_w,                # fixed on-screen size
+            image_format="JPEG",
+            jpeg_quality=92,
+            cursor="crosshair",
+        )
+    else:
+        st.image(annotated, width=box_w)
+        click = None
+
+# A rerun re-reports the component's last value; only act on a *new* click.
+if click is not None and click != st.session_state.last_click:
+    st.session_state.last_click = click
+    # Component reports {x, y} relative to the *rendered* <img> (which may be
+    # shrunk on a phone) plus its rendered width/height; normalise to the
+    # display copy we gave it, then to full-res.
+    rw = click.get("width") or disp_w
+    rh = click.get("height") or disp_h
+    x_disp = click["x"] * disp_w / rw
+    y_disp = click["y"] * disp_h / rh
+    x_full = float(np.clip(x_disp / scale_disp, 0, full_w - 1))
+    y_full = float(np.clip(y_disp / scale_disp, 0, full_h - 1))
+
+    pts = st.session_state.points
+    if not is_area and len(pts) >= 2:
+        pts = []                                  # third click starts a new line
+    pts.append((x_full, y_full))
+    st.session_state.points = pts
+
+    if not is_area and len(pts) == 2:
+        mm = measure.distance_mm(det.H, pts[0], pts[1])
+        st.session_state.measurements.append(
+            {"label": label, "kind": "length", "mm": mm, "points": list(pts)}
+        )
+        st.session_state.points = []
+    st.rerun()
+
+# --- Result -----------------------------------------------------------------
+with col_side:
+    if st.session_state.measurements:
+        m = st.session_state.measurements[-1]
+        if m["kind"] == "length":
+            st.markdown(f'<div class="big-result">{fmt_length(m["mm"], units)}</div>', unsafe_allow_html=True)
+            alts = [u for u in ("ft-in", "mm", "decimal inches") if u != units]
+            st.markdown(
+                f'<div class="sub-result">{m["label"]} · '
+                f'{fmt_length(m["mm"], alts[0])} · {fmt_length(m["mm"], alts[1])}</div>',
+                unsafe_allow_html=True,
+            )
+        else:
+            ft2 = m["mm2"] / 92_903.04
+            st.markdown(f'<div class="big-result">{ft2:,.2f} ft²</div>', unsafe_allow_html=True)
+            st.markdown(
+                f'<div class="sub-result">{m["label"]} · {m["mm2"] / 1e6:,.3f} m² · {m["mm2"] / 645.16:,.1f} in²</div>',
+                unsafe_allow_html=True,
+            )
+    elif det.found:
+        st.markdown(
+            '<div class="sub-result">Click two points on the photo'
+            + (" (or several, for area)" if is_area else "")
+            + ".</div>",
+            unsafe_allow_html=True,
+        )
+
+# --- Measurement list + download ---------------------------------------------
+if st.session_state.measurements:
+    st.subheader("Measurements")
+    rows = []
+    for m in st.session_state.measurements:
+        if m["kind"] == "length":
+            rows.append({"Label": m["label"], "Type": "Length", "Value": fmt_length(m["mm"], units),
+                         "mm": round(m["mm"], 1)})
+        else:
+            rows.append({"Label": m["label"], "Type": "Area", "Value": fmt_area(m["mm2"]),
+                         "mm": round(m["mm2"], 0)})
+    st.table(rows)
+
+    full_annotated = draw_annotations(
+        overlay_pil, 1.0, st.session_state.measurements, [], units
+    )
+    buf = io.BytesIO()
+    full_annotated.convert("RGB").save(buf, format="JPEG", quality=90)
+    stem = Path(uploaded.name).stem
+    st.download_button(
+        "⬇️ Download annotated photo",
+        data=buf.getvalue(),
+        file_name=f"{stem}_measured.jpg",
+        mime="image/jpeg",
+    )
