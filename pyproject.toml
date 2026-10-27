@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "table1-sitescale"
+version = "0.1.0"
+description = "Hackathon MVP: measure real dimensions from site photos using a hand-drawn ArUco board"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "opencv-contrib-python>=4.8",   # ArUco (cv2.aruco.ArucoDetector API)
+    "numpy",
+    "streamlit>=1.30",
+    "streamlit-image-coordinates",  # click points on an image
+    "pillow",                       # EXIF rotation, image IO
+]
+
+[tool.setuptools]
+# Scripts run from the repo root (streamlit run app.py), so nothing is packaged;
+# `pip install -e .` just installs the dependencies above.
+packages = []
+py-modules = []
