@@ -62,21 +62,6 @@ def load_asset(path: str, max_w: int = 1600, transparent: bool = True) -> Image.
     return Image.fromarray(a.astype(np.uint8), "RGBA")
 
 
-def current_theme() -> str:
-    try:
-        return st.context.theme.type            # "light" | "dark"
-    except Exception:
-        return "light"
-
-
-def set_theme(base: str) -> None:
-    """Switch the Streamlit theme at runtime (uses a private config hook)."""
-    try:
-        st._config.set_option("theme.base", base)
-    except Exception:
-        pass
-
-
 logo_img = load_asset(str(LOGO))
 st.set_page_config(
     page_title="Site Photo Measure",
@@ -275,11 +260,7 @@ def draw_annotations(
 # ----------------------------------------------------------------------------
 with st.sidebar:
     st.header("Settings")
-    is_dark = current_theme() == "dark"
-    want_dark = st.toggle("🌙 Dark mode", value=is_dark)
-    if want_dark != is_dark:
-        set_theme("dark" if want_dark else "light")
-        st.rerun()
+    st.caption("Theme: dark by default. Switch via the ⋮ menu → Settings → Theme.")
     mode = st.radio("Mode", ["Length (2 points)", "Area (N points)"], index=0)
     units = st.radio("Units", ["ft-in", "mm", "decimal inches"], index=0, horizontal=True)
     view_w = st.slider("Image size (px wide)", 500, 1600, VIEW_W, step=50)
