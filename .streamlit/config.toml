@@ -1,8 +1,0 @@
-# Default look for the app (local and Streamlit Community Cloud).
-# Users can flip Light/Dark via the ⋮ menu > Settings > Theme.
-[theme]
-base = "dark"
-primaryColor = "#2f7cf6"     # blue from the logo
-
-[browser]
-gatherUsageStats = false

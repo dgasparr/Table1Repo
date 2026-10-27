@@ -260,7 +260,6 @@ def draw_annotations(
 # ----------------------------------------------------------------------------
 with st.sidebar:
     st.header("Settings")
-    st.caption("Theme: dark by default. Switch via the ⋮ menu → Settings → Theme.")
     mode = st.radio("Mode", ["Length (2 points)", "Area (N points)"], index=0)
     units = st.radio("Units", ["ft-in", "mm", "decimal inches"], index=0, horizontal=True)
     view_w = st.slider("Image size (px wide)", 500, 1600, VIEW_W, step=50)
