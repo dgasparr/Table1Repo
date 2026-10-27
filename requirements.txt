@@ -1,0 +1,8 @@
+# Streamlit Community Cloud install list (mirrors pyproject.toml).
+# Headless OpenCV: Cloud has no display libs (libGL), and nothing here calls imshow.
+# Local dev still uses setup_venv.bat / pyproject.toml.
+opencv-contrib-python-headless>=4.8
+numpy
+streamlit>=1.30
+streamlit-image-coordinates
+pillow
