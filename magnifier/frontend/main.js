@@ -42,7 +42,15 @@ function drawLoupe(p) {
   ctx.fillStyle = "#111";
   ctx.fillRect(0, 0, S, S);
   ctx.imageSmoothingEnabled = true;
-  ctx.drawImage(img, p.x * k - src / 2, p.y * k - src / 2, src, src, 0, 0, S, S);
+  // Clip the source square to the image (some browsers draw nothing if it pokes outside).
+  const sx = p.x * k - src / 2, sy = p.y * k - src / 2;
+  const cx0 = Math.max(sx, 0), cy0 = Math.max(sy, 0);
+  const cx1 = Math.min(sx + src, img.naturalWidth), cy1 = Math.min(sy + src, img.naturalHeight);
+  if (cx1 > cx0 && cy1 > cy0) {
+    const f = S / src;
+    ctx.drawImage(img, cx0, cy0, cx1 - cx0, cy1 - cy0,
+                  (cx0 - sx) * f, (cy0 - sy) * f, (cx1 - cx0) * f, (cy1 - cy0) * f);
+  }
 
   // Crosshair with a gap in the middle so the exact pixel stays visible.
   const c = S / 2, g = 6 * dpr, a = S * 0.42;

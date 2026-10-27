@@ -283,7 +283,7 @@ with st.sidebar:
     units = st.radio("Units", ["ft-in", "mm", "decimal inches"], index=0, horizontal=True)
     view_w = st.slider("Image size (px wide)", 500, 1600, VIEW_W, step=50)
     view_h = round(view_w * VIEW_H / VIEW_W)
-    mag_on = st.toggle("Magnifier: press, hold, release (beta)", value=False,
+    mag_on = st.toggle("Magnifier: press, hold, release (beta)", value=True,
                        help="Press on the photo and hold: a magnifier shows exactly where the point "
                             "will go. Drag to adjust, release to place it.")
     zoom_on = st.toggle("Precise placement (zoom loupe)", value=True, disabled=mag_on,
@@ -516,6 +516,7 @@ with col_img:
         with st.container(width=box_w):
             if mag_on:
                 click = magnifier_click(annotated, key=f"mag_{st.session_state.click_nonce}")
+                st.caption("🔍 Magnifier mode: press and hold on the photo, drag to adjust, release to place.")
             else:
                 click = streamlit_image_coordinates(
                     annotated,
