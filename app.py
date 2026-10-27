@@ -6,6 +6,7 @@ Every point handed to measure.py is in FULL-RESOLUTION image pixels.
 """
 from __future__ import annotations
 
+import base64
 import html
 import io
 from pathlib import Path
@@ -31,7 +32,9 @@ LOUPE_WINDOWS = [150, 300, 600]   # crop size in full-res px (smaller = finer)
 # screens stay sharp. Clicks are always scaled back to full-res.
 ROOT = Path(__file__).parent
 CAPTURE_RULES = ROOT / "assets" / "capture_rules.png"
-LOGO = ROOT / "Smartphone AR Room Measurement Scanner-logo.png"
+LOGO = ROOT / "logo.png"
+APP_NAME = "ArUcurate"                 # product name from the logo
+APP_TITLE = "Site Photo Measure"
 TUTORIAL = ROOT / "static" / "tutorial_diagram.png"
 TUTORIAL_URL = "app/static/tutorial_diagram.png"   # Streamlit static route (server.enableStaticServing)
 PLANE_WARNING = "Only measure points on the same flat surface as the board."
@@ -63,9 +66,9 @@ def load_asset(path: str, max_w: int = 1600, transparent: bool = True) -> Image.
     return Image.fromarray(a.astype(np.uint8), "RGBA")
 
 
-logo_img = load_asset(str(LOGO))
+logo_img = load_asset(str(LOGO), transparent=False)   # dark-background logo: keep white text/lines
 st.set_page_config(
-    page_title="Site Photo Measure",
+    page_title=f"{APP_NAME} | {APP_TITLE}",
     page_icon=logo_img if logo_img is not None else "📐",
     layout="wide",
 )
@@ -75,11 +78,14 @@ if logo_img is not None:
 st.markdown(
     """
     <style>
+      /* enlarge the st.logo image in the top-left header */
+      [data-testid="stLogo"], img[data-testid="stLogo"] { height: 3.5rem !important; max-height: 3.5rem !important; width: auto !important; }
       .big-result { font-size: 3.2rem; font-weight: 700; line-height: 1.1; margin: 0.2rem 0; }
       .sub-result { font-size: 1.1rem; opacity: 0.65; }
       .pm { font-size: 1.6rem; font-weight: 500; opacity: 0.6; white-space: nowrap; }
       .badge { font-size: 1.3rem; font-weight: 600; }
       .app-title { font-size: 2.4rem; font-weight: 700; line-height: 1.1; margin: 0; }
+      .app-title-sep { opacity: 0.45; font-weight: 400; margin: 0 0.15em; }
       .app-sub { font-size: 1.05rem; opacity: 0.75; margin-top: 0.3rem; }
       div[data-testid="stFileUploader"] label { font-size: 1.1rem; }
     </style>
@@ -150,6 +156,17 @@ def fmt_length(mm: float, units: str) -> str:
     if units == "mm":
         return f"{mm:,.1f} mm"
     return f'{mm / 25.4:,.2f}"'
+
+
+@st.cache_data(show_spinner=False)
+def data_uri(path: str, max_w: int = 900) -> str:
+    """Small inline copy of an image as a data: URI (works without static serving)."""
+    img = Image.open(path).convert("RGB")
+    if img.width > max_w:
+        img = img.resize((max_w, round(img.height * max_w / img.width)), Image.LANCZOS)
+    buf = io.BytesIO()
+    img.save(buf, format="JPEG", quality=85)
+    return "data:image/jpeg;base64," + base64.b64encode(buf.getvalue()).decode()
 
 
 def fmt_pm_units(unc_mm: float | None, units: str) -> str:
@@ -290,10 +307,11 @@ with st.sidebar:
         "- Measure off the board's surface"
     )
     if TUTORIAL.exists():
-        # Served via Streamlit's static route; the link opens it full size in a new tab.
+        # Preview is embedded inline (always renders). The link goes to Streamlit's
+        # static route, which needs server.enableStaticServing (.streamlit/config.toml).
         st.markdown(
             f'<a href="{TUTORIAL_URL}" target="_blank" title="Open full size in a new tab">'
-            f'<img src="{TUTORIAL_URL}" style="width:100%; border-radius:6px;"></a>',
+            f'<img src="{data_uri(str(TUTORIAL))}" style="width:100%; border-radius:6px;"></a>',
             unsafe_allow_html=True,
         )
         st.caption("The marker board (IDs 0–3). Click the diagram to open it full size.")
@@ -301,15 +319,15 @@ with st.sidebar:
 # ----------------------------------------------------------------------------
 # Main
 # ----------------------------------------------------------------------------
-hc1, hc2 = st.columns([1, 9], vertical_alignment="center")
+hc1, hc2 = st.columns([1.6, 8.4], vertical_alignment="center")
 with hc1:
     if logo_img is not None:
-        st.image(logo_img, width=110)
+        st.image(logo_img, width=180)
     else:
         st.markdown("# 📐")
 with hc2:
     st.markdown(
-        '<div class="app-title">Site Photo Measure</div>'
+        f'<div class="app-title">{APP_NAME} <span class="app-title-sep">·</span> {APP_TITLE}</div>'
         f'<div class="app-sub"><b>How it works:</b> {HOW_IT_WORKS}</div>',
         unsafe_allow_html=True,
     )
