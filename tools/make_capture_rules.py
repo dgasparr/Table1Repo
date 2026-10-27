@@ -147,7 +147,7 @@ def main():
     head = Image.new("RGB", (W, 110), PAPER)
     d = ImageDraw.Draw(head)
     d.text((24, 18), "How to take the photo", fill=INK, font=font(48, True))
-    d.text((24, 76), "Tested on 210 photos: about 1/32\" typical error when you follow these", fill=(90, 90, 90),
+    d.text((24, 76), "Follow these for the most accurate measurements", fill=(90, 90, 90),
             font=font(22))
     parts = [head, section("DO", DO, True, GREEN), section("DON'T", DONT, False, RED)]
     out = Image.new("RGB", (W, sum(p.height for p in parts) + 20), PAPER)

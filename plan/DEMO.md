@@ -11,13 +11,13 @@
 | 0:00 | Speaker 1 | "Site dimensions get lost: you leave the site, the ceiling gets closed up, and the RFI comes back asking how wide that opening was." | Title slide |
 | 0:30 | Speaker 1 | "Our fix: a hand-drawn sticker and a phone photo. Capture now, measure later, from any browser." | Hold up the drawn board |
 | 0:50 | Speaker 2 | "The board is four ArUco markers drawn with a Sharpie on a calc pad. The app finds them and corrects for perspective, so the photo can be taken at an angle." | Show the cartoon in the app sidebar |
-| 1:20 | Speaker 2 | "Here's the rule card. We tested it on 210 photos: follow it and you get about 1/32-inch typical error." | Point at DO/DON'T |
+| 1:20 | Speaker 2 | "Here's the rule card: where to stand, what angle, what to avoid." | Point at DO/DON'T |
 | 1:40 | Speaker 3 | **Live:** "I'll take a photo at an angle right now." | Phone → Take Photo → upload. Badge goes 🟢/🟡 |
 | 2:10 | Speaker 3 | "Green means the board fit is good. Click two points…" | Click the object's edges → big ft-in readout **with ±** |
 | 2:40 | Speaker 3 | "…8'-4 1/2 plus or minus 1/16. The plus-or-minus is the point: the app tells you how far to trust it." | Show the true value on the sticky note |
 | 3:00 | Speaker 3 | "Watch what happens if I reach far from the board." | Click a far point → large ± + warning |
-| 3:20 | Speaker 4 | "We checked it against a tape measure." | Error table (`python tools/error_summary.py`) |
-| 3:50 | Speaker 4 | "Honest limits: one flat surface, the one the board is on. And the ± is calibrated: it covered the true error 97% of the time in testing." | A13 slide |
+| 3:20 | Speaker 4 | "On our real photos, the board's known 7-inch edge reads 7 inches, on a wall and on a table at a steep angle." | Show image01/image02 in the app |
+| 3:50 | Speaker 4 | "Limits: it measures one flat surface, the one the board is on. And the ± grows when you reach far from the board." | |
 | 4:15 | Speaker 5 | Roadmap (below) | Roadmap slide |
 | 4:50 | All | "Questions?" | |
 
@@ -25,8 +25,6 @@
 
 ## Pitch lines to reuse
 - "Capture now, measure later: any phone, no app install, no LiDAR."
-- "Tested on 210 photos: about 1/32" next to the board from 3–10 ft and up to 45°."
-- "It knows when it's unsure: the ± covered the true error 97% of the time."
 - "A Sharpie and a calc pad are the whole hardware budget."
 
 ## Roadmap slide (C11)
@@ -36,4 +34,5 @@
 2. **Beyond one wall:** off-plane measurement (heights, depths) from one photo using vanishing lines, plus multi-photo stitching for long walls.
 3. **Better targets:** a printed ChArUco card or magnetic plate; two boards spread across a span to kill the long-reach error.
 4. **Pro devices:** LiDAR on iPhone/iPad Pro as an independent cross-check.
-5. **Workflow:** project folders, audit trail (photo + calibration + clicks), annotated exports for field reports and RFIs.
+5. **Field validation:** a tape-measure error study on real sites before anyone relies on it.
+6. **Workflow:** project folders, audit trail (photo + calibration + clicks), annotated exports for field reports and RFIs.
