@@ -17,6 +17,7 @@ from PIL import Image, ImageDraw, ImageFont, ImageOps
 from streamlit_image_coordinates import streamlit_image_coordinates
 
 import measure
+from magnifier import magnifier_click
 
 # ----------------------------------------------------------------------------
 # Config
@@ -282,9 +283,13 @@ with st.sidebar:
     units = st.radio("Units", ["ft-in", "mm", "decimal inches"], index=0, horizontal=True)
     view_w = st.slider("Image size (px wide)", 500, 1600, VIEW_W, step=50)
     view_h = round(view_w * VIEW_H / VIEW_W)
-    zoom_on = st.toggle("Precise placement (zoom loupe)", value=True,
+    mag_on = st.toggle("Magnifier: press, hold, release (beta)", value=True,
+                       help="Press on the photo and hold: a magnifier shows exactly where the point "
+                            "will go. Drag to adjust, release to place it.")
+    zoom_on = st.toggle("Precise placement (zoom loupe)", value=True, disabled=mag_on,
                         help="First click marks a rough spot; a magnified crop appears "
                              "so you can place the point exactly.")
+    zoom_on = zoom_on and not mag_on
     zoom_win = st.select_slider("Loupe window (photo px)", options=LOUPE_WINDOWS, value=300,
                                 disabled=not zoom_on)
     st.caption(PLANE_WARNING)
@@ -397,6 +402,8 @@ overlay_pil = bgr_to_pil(overlay_bgr)
 aspect = full_w / full_h
 box_w = round(min(view_w, view_h * aspect))
 disp_w = min(2 * box_w, full_w)                 # 2x for high-DPI sharpness
+if mag_on:                                      # magnifier zooms in the browser: send more detail
+    disp_w = min(full_w, max(disp_w, 2400))
 disp_h = max(1, round(full_h * disp_w / full_w))
 display = overlay_pil.resize((disp_w, disp_h), Image.LANCZOS)
 scale_disp = disp_w / full_w           # full-res -> display
@@ -507,14 +514,18 @@ with col_img:
         # Container caps the photo at box_w but lets it shrink to fit a narrow
         # column; a fixed component width would overflow and hide part of it.
         with st.container(width=box_w):
-            click = streamlit_image_coordinates(
-                annotated,
-                key=f"click_{st.session_state.click_nonce}",
-                width="stretch",
-                image_format="JPEG",
-                jpeg_quality=92,
-                cursor="crosshair",
-            )
+            if mag_on:
+                click = magnifier_click(annotated, key=f"mag_{st.session_state.click_nonce}")
+                st.caption("🔍 Magnifier mode: press and hold on the photo, drag to adjust, release to place.")
+            else:
+                click = streamlit_image_coordinates(
+                    annotated,
+                    key=f"click_{st.session_state.click_nonce}",
+                    width="stretch",
+                    image_format="JPEG",
+                    jpeg_quality=92,
+                    cursor="crosshair",
+                )
     else:
         st.image(annotated, width=box_w)
         click = None

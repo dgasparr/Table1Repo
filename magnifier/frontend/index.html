@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>magnifier_click</title>
+    <style>
+      html, body { margin: 0; padding: 0; background: transparent; overflow: hidden; }
+      #wrap { position: relative; width: 100%; line-height: 0; }
+      #image {
+        width: 100%; height: auto; display: block; cursor: crosshair;
+        touch-action: none;              /* drag moves the magnifier, not the page */
+        user-select: none; -webkit-user-select: none;
+        -webkit-touch-callout: none;     /* no iOS "save image" menu on long press */
+      }
+      #loupe {
+        position: absolute; top: 8px; right: 8px; display: none; pointer-events: none;
+        border-radius: 50%; box-shadow: 0 0 0 3px #fff, 0 0 0 5px rgba(0,0,0,.6), 0 4px 14px rgba(0,0,0,.5);
+      }
+    </style>
+    <script src="./streamlit-component-lib.js"></script>
+  </head>
+  <body>
+    <div id="wrap">
+      <img id="image" draggable="false" alt="" />
+      <canvas id="loupe"></canvas>
+    </div>
+    <script src="./main.js"></script>
+  </body>
+</html>
