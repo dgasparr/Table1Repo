@@ -33,7 +33,7 @@ LOUPE_WINDOWS = [150, 300, 600]   # crop size in full-res px (smaller = finer)
 ROOT = Path(__file__).parent
 CAPTURE_RULES = ROOT / "assets" / "capture_rules.png"
 LOGO = ROOT / "logo.png"
-APP_NAME = "ArUcurate"                 # product name from the logo
+APP_NAME = "AruCurate"                 # product name from the logo
 APP_TITLE = "Site Photo Measure"
 TUTORIAL = ROOT / "static" / "tutorial_diagram.png"
 TUTORIAL_URL = "app/static/tutorial_diagram.png"   # Streamlit static route (server.enableStaticServing)
@@ -343,20 +343,14 @@ if uploaded is None:
     st.session_state.bgr = None
     st.session_state.det = None
     st.info("Upload a photo that shows the whole marker board to begin.")
-    tutorial_img = load_asset(str(TUTORIAL), transparent=False)
-    if tutorial_img is not None:
-        tc1, tc2 = st.columns([3, 2], gap="large")
-        with tc1:
-            st.image(tutorial_img, width="stretch")
-        with tc2:
-            st.markdown(
-                "#### Three steps\n"
-                "1. **Tape the marker board** (IDs 0–3) flat on the surface you want to measure.\n"
-                "2. **Take a photo** from 3–10 ft, 1× lens, whole board in frame.\n"
-                "3. **Upload and click two points** on that surface. Read the length "
-                "in ft-in with a ± tolerance.\n\n"
-                "Capture rules are in the sidebar."
-            )
+    st.markdown(
+        "#### Three steps\n"
+        "1. **Tape the marker board** (IDs 0–3) flat on the surface you want to measure.\n"
+        "2. **Take a photo** from 3–10 ft, 1× lens, whole board in frame.\n"
+        "3. **Upload and click two points** on that surface. Read the length "
+        "in ft-in with a ± tolerance.\n\n"
+        "Capture rules and the marker-board diagram are in the sidebar."
+    )
     st.stop()
 
 # Decode + detect once per upload (not on every click).
