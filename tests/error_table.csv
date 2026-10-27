@@ -1,0 +1,3 @@
+photo,target,true_in,app_in,app_pm_in,grade,notes
+image01.png,board_top_edge,7.000,6.994,0.044,yellow,Pair A end-to-end check (wall)
+image02.png,board_top_edge,7.000,7.021,0.033,green,Pair A end-to-end check (table)

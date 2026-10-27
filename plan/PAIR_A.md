@@ -28,13 +28,13 @@
 ## Block 3 → CP3 FREEZE (3:45)
 - [ ] ✨ **A9. `area_mm2()` verified** on a letter sheet (8.5×11 in = 60,322 mm²).
 - [ ] ✨ **A10. Rectified view helper** (`rectify(image, det) -> image`, top-down at about 4 px/mm). Only if Pair B wants it; agree on the signature at CP2.
-- [ ] ✨ **A12. "±" uncertainty on every length** (on hold; about 15 min for A + 5 min for B). Shows `8'-4 1/2" ± 1/16"` so engineers know how far to trust a number. Benjamin's `markers.measure()` already computes it: it reruns the solve a few hundred times with tiny corner wobbles and takes the spread, and it warns when the points are far from the board. It adds two functions to the agreed interface, so **agree with Pair B first**:
+- [x] ✨ **A12. "±" uncertainty on every length.** ✅ Built and tested. Real photos: the board's 7" edge reads `0'-7" ± 1/16"` in 30–50 ms. A point far off the board gives a large ± plus a warning (17.8× board size → ± 16 1/2"). Handoff: `plan/handoff_A12_for_pair_B.md`. Shows `8'-4 1/2" ± 1/16"` so engineers know how far to trust a number. Benjamin's `markers.measure()` already computes it: it reruns the solve a few hundred times with tiny corner wobbles and takes the spread, and it warns when the points are far from the board. It adds two functions to the agreed interface, so **agree with Pair B first**:
   ```python
   def distance_with_uncertainty(det, p1, p2) -> tuple[float, float, str]:  # (mm, ±mm 1-sigma, warning or "")
   def fmt_pm(unc_mm) -> str:  # '± 1/16"', or '± <1/16"' when it rounds to zero
   ```
   Pair B: show `f"{fmt_ft_in(mm)} {fmt_pm(unc)}"` plus `warn` as a caption. About 50 ms per call, so cache by `(p1, p2)`. Area mode stays without ±.
-- [ ] ✨ **A13. Stress test on synthetic photos** (on hold; about 15 min). Sweep camera angle (0–70°) and board size in the frame; record detection yes/no and error. Output: a small table like "≤45°: under 1/16" · 60°: 1/8" · >70°: not found". It gives tested numbers for the capture-rules cartoon (to Pair C) and a pitch slide. Caveat: synthetic photos are optimistic; Pair C's real error table is the final word. Extend `selftest.py` or add `stress_test.py`.
+- [x] ✨ **A13. Stress test on synthetic photos.** ✅ `stress_test.py`; results and capture rules are in `plan/A13_stress_results.md`. Next to the board: about 1/32" typical from 3–10 ft up to 45°. A 48" reach from a 7" board: 0.5–3" (the ± flags it). The ± is honest: 97% coverage. Sweep camera angle (0–70°) and board size in the frame; record detection yes/no and error. Output: a small table like "≤45°: under 1/16" · 60°: 1/8" · >70°: not found". It gives tested numbers for the capture-rules cartoon (to Pair C) and a pitch slide. Caveat: synthetic photos are optimistic; Pair C's real error table is the final word. Extend `selftest.py` or add `stress_test.py`.
 - [ ] ✨ **A11. Future-feature spike: AI chat reports a dimension.** Prototype only, not wired into the app. Good for the roadmap slide.
 
 ## Status (update at each checkpoint)

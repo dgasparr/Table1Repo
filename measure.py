@@ -63,6 +63,33 @@ def distance_mm(H, p1, p2) -> float:
     return float(np.linalg.norm(pts[1] - pts[0]))
 
 
+def distance_with_uncertainty(det: Detection, p1, p2) -> tuple[float, float, str]:
+    """(length_mm, uncertainty_mm 1-sigma, warning or ""). Uses markers.measure() Monte Carlo
+    over corner noise; click placement error is not included."""
+    mm = distance_mm(det.H, p1, p2)
+    if det.cal is None or det.cal.get("status") != "ready":
+        return mm, float("nan"), "Uncertainty unavailable for this detection."
+    m = markers.measure(det.cal, p1, p2)
+    # The same-plane caveat is already shown permanently in the app; keep the rest
+    warns = [w for w in m["warnings"] if not w.startswith("Valid only")]
+    return mm, m["uncertainty_mm"], " ".join(warns)
+
+
+def fmt_pm(unc_mm: float, denom: int = 16) -> str:
+    """'± 1/16"' style, rounded to 1/denom inch; '± <1/16"' when it rounds to zero."""
+    if not np.isfinite(unc_mm):
+        return "± ?"
+    n = round(unc_mm / 25.4 * denom)
+    if n == 0:
+        return f'± <1/{denom}"'
+    inch, frac = divmod(n, denom)
+    if not frac:
+        return f'± {inch}"'
+    g = np.gcd(frac, denom)
+    f = f"{frac // g}/{denom // g}"
+    return f'± {inch} {f}"' if inch else f'± {f}"'
+
+
 def area_mm2(H, points) -> float:
     pts = cv2.perspectiveTransform(np.array([points], dtype=np.float64), H)[0]
     return float(abs(cv2.contourArea(pts.astype(np.float32))))

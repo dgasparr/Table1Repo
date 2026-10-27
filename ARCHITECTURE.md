@@ -53,6 +53,8 @@ def distance_mm(H, p1: tuple[float, float], p2: tuple[float, float]) -> float
 def area_mm2(H, points: list[tuple[float, float]]) -> float
 def fmt_ft_in(mm: float, denom: int = 16) -> str   # 1234.0 -> 4'-0 9/16"
 def draw_overlay(image_bgr, det: Detection) -> np.ndarray  # marker outlines + IDs
+def distance_with_uncertainty(det, p1, p2) -> tuple[float, float, str]  # (mm, ±mm 1-sigma, warning); A12
+def fmt_pm(unc_mm: float) -> str                    # '± 1/16"'; A12
 ```
 
 **Coordinate rule:** every point passed to `measure.py` is in **full-resolution image pixels**. `app.py` displays a resized copy and converts each click back to full-res with `x_full = x_click * (full_width / display_width)`.

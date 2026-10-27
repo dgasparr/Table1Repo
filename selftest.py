@@ -95,6 +95,19 @@ def main():
     measure.draw_overlay(big, det_big); t2 = time.perf_counter()
     print(f"12 MP timing: detect {t1 - t0:.2f} s, draw_overlay {t2 - t1:.3f} s")
 
+    # A12: uncertainty
+    t0 = time.perf_counter()
+    mm_u, unc, warn = measure.distance_with_uncertainty(det, tuple(p[0]), tuple(p[1]))
+    t_unc = time.perf_counter() - t0
+    print(f"A12: {measure.fmt_ft_in(mm_u)} {measure.fmt_pm(unc)} (unc {unc:.2f} mm, {t_unc * 1000:.0f} ms) "
+          f"warn='{warn}'")
+    assert abs(mm_u - d) < 1e-6 and 0 <= unc < 1.6
+    far = measure.distance_with_uncertainty(det, tuple(p[0]), (photo.shape[1] - 1.0, photo.shape[0] - 1.0))
+    print(f"A12 far point: {measure.fmt_pm(far[1])} warn='{far[2]}'")
+    pm = measure.fmt_pm
+    assert pm(0.5) == '± <1/16"' and pm(1.6) == '± 1/16"' and pm(3.2) == '± 1/8"'
+    assert pm(25.4 * 1.25) == '± 1 1/4"' and pm(25.4) == '± 1"' and pm(float("nan")) == "± ?"
+
     f = measure.fmt_ft_in
     assert f(1234.0) == "4'-0 9/16\"", f(1234.0)
     assert f(7.25 * 25.4) == "0'-7 1/4\""
