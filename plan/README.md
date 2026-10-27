@@ -43,6 +43,8 @@ Dependencies live in `pyproject.toml`. To add one, ask Pair C, then everyone re-
 
 ## Checkpoints
 
+**It's 1:00 and pencils down is 4:30.** Eat lunch at your desk, one person of each pair at a time. ✨ steps are cut unless you're ahead.
+
 At each checkpoint **every pair stops and meets for 5 minutes**:
 1. Each pair: update the **Status** section at the bottom of your PAIR file (done / blocked / next).
 2. Each pair: `git add` your files, `git commit`, `git pull --rebase`, `git push`.
@@ -51,8 +53,8 @@ At each checkpoint **every pair stops and meets for 5 minutes**:
 
 | CP | Target time | The whole team has… | Go / no-go question |
 |---|---|---|---|
-| **CP1** | ~1:00 (before lunch) | App running on the stub; board drawn; first real photo detected | **Does the hand-drawn board detect?** If not: retune, redraw bigger, or fall back to a single 6" marker |
-| **CP2** | ~2:30 | **Real end to end:** phone photo → click → ft-in length + badge | Is the accuracy good enough? Add area or not? |
+| **CP1** | 1:45 | App running on the stub; board drawn; first real photo detected | **Does the hand-drawn board detect?** If not: retune, redraw bigger, or fall back to a single 6" marker |
+| **CP2** | 2:45 | **Real end to end:** phone photo → click → ft-in length + badge | Is the accuracy good enough? Add area or not? |
 | **CP3** | 3:45 **FREEZE** | Error table done, cartoon in the app, demo script written | Nothing new after this, only fixes |
 | **CP4** | 4:15 | Demo rehearsed twice, backup video recorded | — |
 

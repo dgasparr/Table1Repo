@@ -107,13 +107,12 @@ The UI builds against a stub that returns the identity matrix as `H` from minute
 
 | Time | Milestone |
 |---|---|
-| ASAP | Benjamin pushes `calcpad_markers.py`; Pair C starts drawing |
-| +45 min | Real phone photo of the drawn board detected (go/no-go) |
-| 1:30 | UI end to end on the stub |
-| 2:30 | **Real end to end:** phone photo → click → ft-in length |
-| 3:15 | Error table done; fix the worst cases; area if on track |
-| 3:45 | **Feature freeze** |
-| 4:00–4:30 | Rehearse, record a backup video |
+| 1:00 | Start. Benjamin pushes `calcpad_markers.py`; Pair C starts drawing. Lunch at desks, staggered |
+| **1:45 CP1** | Drawn board detected on a real phone photo (go/no-go); UI running on the stub |
+| **2:45 CP2** | **Real end to end:** phone photo → click → ft-in length + badge |
+| 3:15 | Error table done; fix the worst cases; area only if well ahead |
+| **3:45 CP3** | **Feature freeze** |
+| **4:15 CP4** | Rehearsed twice, backup video recorded |
 
 ## Demo story
 1. Problem: site dimensions are lost after the visit or once things are covered up.

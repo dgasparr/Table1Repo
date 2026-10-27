@@ -8,16 +8,16 @@
 
 Split the pair: **C-field** (drawing, measuring, photos) and **C-desk** (Claude: scripts, cartoon, error table, demo). Swap if one side runs ahead.
 
-## Block 1 → CP1 (~1:00)
+## Block 1 → CP1 (1:45)
 - [ ] **C1 (desk). Repo check.** Clone, run the setup in README, and confirm `setup_venv.bat` works (it prints OK with aruco: True).
 - [ ] **C2 (desk). Marker generator.** `tools/make_markers.py`: render `DICT_4X4_50` IDs 0–3 with `cv2.aruco.generateImageMarker` as large 6×6 grids with row/column numbers, plus the full 2×2 board preview (ID 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right). Show them on screen for C-field to copy.
   ⚠️ **Do not copy the ASCII patterns from the summaries** (the paste corrupted them).
 - [ ] **C3 (field). Draw the board** on the 1" / ⅛" pad: cell ½" (4 small squares), marker 3", gap 1", board 7"×7", ¾" margin. Use a black Sharpie, fill cells fully, keep the whites clean, never mirror a marker. Measure the outer edges with a ruler and write down the actual size. **Draw a spare** if time allows.
 - [ ] **C4 (field). First photo → Pair A.** Tape the board flat on a wall, take 1 photo straight-on and 1 at about 30°, from about 5 ft, on the 1× lens. Put them in `tests/photos/` and push. **This is the CP1 go/no-go.**
-- [ ] **C5 (field). Answer key.** Tape-measure 5 targets **on the same wall as the board**: board edge, a letter sheet, a door width, a whiteboard, a wall feature. Write `tests/answer_key.csv` with columns `target,true_in,notes`.
+- [ ] **C5 (field). Answer key.** Tape-measure 3–4 targets **on the same wall as the board**: board edge, a letter sheet, a door width, a whiteboard, a wall feature. Write `tests/answer_key.csv` with columns `target,true_in,notes`.
 
-## Block 2 → CP2 (~2:30)
-- [ ] **C6 (field). Photo set**, named like `door_30deg_6ft.jpg`: straight-on, 30°, 60°, board small in frame (about 12 ft), board near the edge, plus 1 deliberately bad one (0.5× lens or blurry) to show the red badge. Aim for about 10. iPhone: Formats → Most Compatible.
+## Block 2 → CP2 (2:45)
+- [ ] **C6 (field). Photo set**, named like `door_30deg_6ft.jpg`: straight-on, 30°, 60°, board small in frame (about 12 ft), board near the edge, plus 1 deliberately bad one (0.5× lens or blurry) to show the red badge. Aim for about 6. iPhone: Formats → Most Compatible.
 - [ ] **C7 (desk). Capture-rules cartoon** → `assets/capture_rules.png` for the in-app help. Do/don't panels:
   - ✅ 3–10 ft away · ✅ within 45° · ✅ whole board in frame · ✅ paper flat · ✅ 1× lens
   - ❌ 0.5× lens · ❌ board at the edge or cut off · ❌ steep angle · ❌ curled paper or glare · ❌ measuring off the board's surface
