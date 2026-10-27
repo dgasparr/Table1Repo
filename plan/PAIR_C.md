@@ -26,7 +26,7 @@ Split the pair: **C-field** (drawing, measuring, photos) and **C-desk** (Claude:
 - [ ] **C8 (desk). Checkpoint run.** At each checkpoint, `git pull` and run the app on the big screen with the newest photos.
 
 ## Block 3 → CP3 FREEZE (3:45)
-- [ ] **C9 (both). Error table.** Files ready: `tests/answer_key.csv` and `tests/error_table.csv` (2 rows seeded); run `python tools/error_summary.py`. **Needs real objects measured.** Use the app to measure every answer-key target in every photo. Fill `tests/error_table.csv` with `photo,target,true_in,app_in,error_in,error_pct,grade`. Pull out the headline numbers: median error, worst case and why.
+- [ ] ~~**C9 (both). Error table.**~~ **Dropped at CP2 (no time).** Accuracy story = A13 stress test + board-edge checks on real photos; field validation moved to the roadmap. Files kept for later: `tests/answer_key.csv` and `tests/error_table.csv` (2 rows seeded); run `python tools/error_summary.py`. **Needs real objects measured.** Use the app to measure every answer-key target in every photo. Fill `tests/error_table.csv` with `photo,target,true_in,app_in,error_in,error_pct,grade`. Pull out the headline numbers: median error, worst case and why.
 - [x] **C10 (desk). Demo script** ✅ Draft in `plan/DEMO.md`; review it and assign speakers. in `plan/DEMO.md` (5 min): problem → capture rules (cartoon) → live phone photo at an angle → measure the door in ft-in → badge → error table → limits (single plane) → roadmap (AI chat reporting dimensions, off-plane measurement, multi-photo mosaic, LiDAR, printed ChArUco target).
 - [x] **C11. Roadmap slide** ✅ Content is at the bottom of `plan/DEMO.md`., 1 slide using the future features from CONSOLIDATED.md.
 
