@@ -323,14 +323,17 @@ with col_img:
         display, scale_disp, st.session_state.measurements, st.session_state.points, units
     )
     if det.found:
-        click = streamlit_image_coordinates(
-            annotated,
-            key=f"click_{st.session_state.click_nonce}",
-            width=box_w,                # fixed on-screen size
-            image_format="JPEG",
-            jpeg_quality=92,
-            cursor="crosshair",
-        )
+        # Container caps the photo at box_w but lets it shrink to fit a narrow
+        # column; a fixed component width would overflow and hide part of it.
+        with st.container(width=box_w):
+            click = streamlit_image_coordinates(
+                annotated,
+                key=f"click_{st.session_state.click_nonce}",
+                width="stretch",
+                image_format="JPEG",
+                jpeg_quality=92,
+                cursor="crosshair",
+            )
     else:
         st.image(annotated, width=box_w)
         click = None
