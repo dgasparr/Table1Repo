@@ -32,7 +32,8 @@ LOUPE_WINDOWS = [150, 300, 600]   # crop size in full-res px (smaller = finer)
 ROOT = Path(__file__).parent
 CAPTURE_RULES = ROOT / "assets" / "capture_rules.png"
 LOGO = ROOT / "Smartphone AR Room Measurement Scanner-logo.png"
-TUTORIAL = ROOT / "Tutorial Diagram.png"
+TUTORIAL = ROOT / "static" / "tutorial_diagram.png"
+TUTORIAL_URL = "app/static/tutorial_diagram.png"   # Streamlit static route (server.enableStaticServing)
 PLANE_WARNING = "Only measure points on the same flat surface as the board."
 HOW_IT_WORKS = (
     "Tape the hand-drawn marker board flat on the surface, take a photo, "
@@ -275,24 +276,21 @@ with st.sidebar:
     st.subheader("Capture rules")
     if CAPTURE_RULES.exists():
         st.image(str(CAPTURE_RULES), width="stretch")
-    else:
+    st.markdown(
+        "- ✅ 3–10 ft away, within 45° of straight-on\n"
+        "- ✅ Whole board in frame, paper flat, 1× lens\n"
+        "- ❌ 0.5× lens, board cut off or at the edge\n"
+        "- ❌ Steep angle, curled paper, glare\n"
+        "- ❌ Measuring off the board's surface"
+    )
+    if TUTORIAL.exists():
+        # Served via Streamlit's static route; the link opens it full size in a new tab.
         st.markdown(
-            "- ✅ 3–10 ft away, within 45° of straight-on\n"
-            "- ✅ Whole board in frame, paper flat, 1× lens\n"
-            "- ❌ 0.5× lens, board cut off or at the edge\n"
-            "- ❌ Steep angle, curled paper, glare\n"
-            "- ❌ Measuring off the board's surface\n\n"
-            "*(Cartoon from Pair C appears here once `assets/capture_rules.png` lands.)*"
+            f'<a href="{TUTORIAL_URL}" target="_blank" title="Open full size in a new tab">'
+            f'<img src="{TUTORIAL_URL}" style="width:100%; border-radius:6px;"></a>',
+            unsafe_allow_html=True,
         )
-
-    tutorial_img = load_asset(str(TUTORIAL), transparent=False)
-    if tutorial_img is not None:
-        with st.expander("📖 Tutorial: the marker board", expanded=False):
-            st.image(tutorial_img, width="stretch")
-            st.caption(
-                "Four ArUco markers (IDs 0–3) on one flat sheet. Tape it to the surface "
-                "you want to measure; the app measures along that surface."
-            )
+        st.caption("The marker board (IDs 0–3). Click the diagram to open it full size.")
 
 # ----------------------------------------------------------------------------
 # Main
