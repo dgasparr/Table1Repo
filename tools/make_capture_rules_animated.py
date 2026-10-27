@@ -1,10 +1,12 @@
-"""Render the animated capture-rules cartoon -> assets/capture_rules.png (APNG).
+"""Render the animated capture-rules cartoon -> assets/capture_rules_animated.png (APNG).
 
-    python tools/make_capture_rules.py
+    python tools/make_capture_rules_animated.py
 
-One scene per rule, each animating from a good shot to the ways it goes wrong,
-then a do/don't summary card. app.py shows the file with st.image(), which
-passes RGBA PNG bytes through untouched, so browsers play the animation.
+Animated companion to the static assets/capture_rules.png (tools/make_capture_rules.py),
+using the same A13-tested rules (plan/A13_stress_results.md). One scene per rule, each
+animating from a good shot to the ways it goes wrong, then a do/don't summary card.
+To show it in the app, point st.image() at this file: it passes RGBA PNG bytes through
+untouched, so browsers play the animation.
 """
 from __future__ import annotations
 
@@ -15,7 +17,7 @@ import cv2
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
-OUT = Path(__file__).resolve().parent.parent / "assets" / "capture_rules.png"
+OUT = Path(__file__).resolve().parent.parent / "assets" / "capture_rules_animated.png"
 
 W = H = 640
 AREA_TOP, AREA_BOT = 84, 548          # cartoon area between header and footer
@@ -26,6 +28,7 @@ BG = (255, 248, 236)
 INK = (43, 45, 66)
 GOOD = (46, 158, 91)
 BAD = (215, 38, 61)
+WARN = (226, 132, 0)
 NEUTRAL = (200, 196, 188)
 WALL = (233, 220, 201)
 WALL_DARK = (196, 178, 152)
@@ -156,7 +159,8 @@ def person_side(d, x, floor_y):
 
 # ----------------------------------------------------------------------------
 # Scenes: each is (title, render(p) -> (Image, verdict | None), stops)
-# A verdict is (ok: bool, text). Stops are p values to hold on.
+# A verdict is (ok, text) with ok True / False / "warn" / None (neutral prompt).
+# Stops are p values to hold on.
 # ----------------------------------------------------------------------------
 def canvas():
     img = Image.new("RGB", (W, H), BG)
@@ -204,8 +208,8 @@ def scene_distance(p):
     if ft < 3:
         return img, (False, "Too close: board won't fit")
     if ft > 10:
-        return img, (False, "Too far: markers too small")
-    return img, (True, "3–10 ft away: just right")
+        return img, (False, "Too far: tiny markers, shake hurts")
+    return img, (True, "3–10 ft, held still: just right")
 
 
 def scene_angle(p):
@@ -215,9 +219,11 @@ def scene_angle(p):
     wedge = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     wd = ImageDraw.Draw(wedge)
     wd.pieslice([cx - R, cy - R, cx + R, cy + R], 45, 135, fill=GOOD + (70,))
-    wd.pieslice([cx - R, cy - R, cx + R, cy + R], 0, 45, fill=BAD + (55,))
-    wd.pieslice([cx - R, cy - R, cx + R, cy + R], 135, 180, fill=BAD + (55,))
-    for a in (45, 135):
+    wd.pieslice([cx - R, cy - R, cx + R, cy + R], 30, 45, fill=WARN + (70,))
+    wd.pieslice([cx - R, cy - R, cx + R, cy + R], 135, 150, fill=WARN + (70,))
+    wd.pieslice([cx - R, cy - R, cx + R, cy + R], 0, 30, fill=BAD + (55,))
+    wd.pieslice([cx - R, cy - R, cx + R, cy + R], 150, 180, fill=BAD + (55,))
+    for a in (30, 45, 135, 150):
         r = math.radians(a)
         wd.line([(cx, cy), (cx + R * math.cos(r), cy + R * math.sin(r))], fill=INK + (120,), width=2)
     img.paste(wedge, (0, 0), wedge)
@@ -227,6 +233,8 @@ def scene_angle(p):
     label(d, (cx, cy + 26), "board", 20)
     label(d, (cx + 150, cy + 150), "45°", 22, fg=GOOD)
     label(d, (cx - 150, cy + 150), "45°", 22, fg=GOOD)
+    label(d, (cx + 135, cy + 104), "60°", 22, fg=WARN)
+    label(d, (cx - 135, cy + 104), "60°", 22, fg=WARN)
     label(d, (92, cy + 46), "too steep", 22, fg=BAD)
     label(d, (W - 92, cy + 46), "too steep", 22, fg=BAD)
 
@@ -255,8 +263,10 @@ def scene_angle(p):
 
     if abs(theta - round(theta)) > 1e-6 or round(theta) % 5:
         return img, None
+    if theta > 60:
+        return img, (False, "Past 60°: board hard to read")
     if theta > 45:
-        return img, (False, "Steep angle: markers squash")
+        return img, ("warn", "45–60°: only when close (3–6 ft)")
     if theta == 0:
         return img, (True, "Straight-on is best")
     return img, (True, "Within 45° is OK")
@@ -374,6 +384,56 @@ def scene_paper(p):
                  (False, "Glare hides the markers")][round(p)]
 
 
+def measure(d, a, b, t, text, ok):
+    """App-style two-click line growing from a to b; ok is True, False or "warn"."""
+    if t <= 0:
+        return
+    e = (lerp(a[0], b[0], t), lerp(a[1], b[1], t))
+    d.line([a, e], fill=LINE, width=5)
+    for q in (a, e):
+        d.ellipse([q[0] - 7, q[1] - 7, q[0] + 7, q[1] + 7], fill=LINE, outline="white", width=2)
+    if t >= 1:
+        mx, my = (a[0] + b[0]) / 2, min(a[1], b[1]) - 24
+        label(d, (mx, my), text, 24, fg={True: GOOD, False: BAD, "warn": WARN}[ok])
+        if ok is False:
+            bb = d.textbbox((mx, my), text, font=font(24), anchor="mm")
+            d.line([(bb[0] - 4, my), (bb[2] + 4, my)], fill=BAD, width=3)
+
+
+def scene_near(p):
+    img, d = canvas()
+    floor_y = 470
+    d.rectangle([0, AREA_TOP, W, floor_y], fill=WALL)
+    d.rectangle([0, floor_y, W, AREA_BOT], fill=FLOOR)
+    draw_board(d, quad_map(square_quad(120, 220, 96)))
+    label(d, (120, 162), "board", 20)
+    # A window 4 ft along the wall from the board.
+    d.rectangle([440, 140, 596, 330], fill=(190, 220, 240), outline=INK, width=5)
+    d.line([(518, 140), (518, 330)], fill=INK, width=4)
+    d.line([(440, 235), (596, 235)], fill=INK, width=4)
+
+    stage = math.floor(p + 1e-6)
+    t = p - stage if stage < 2 else 1.0
+    if stage >= 1:
+        d.rounded_rectangle([30, 282, 210, 350], radius=16, outline=GOOD, width=4)
+    near = ((72, 330), (168, 330))
+    far = ((72, 420), (596, 420))
+    if stage == 0:
+        measure(d, *near, t, "1'-0\" ±1/32\"", True)
+    elif stage == 1:
+        measure(d, *near, 1, "1'-0\" ±1/32\"", True)
+        measure(d, *far, t, "4'-0\" ±1.3\"", "warn")
+    else:
+        measure(d, *far, 1, "4'-0\" ±1.3\"", "warn")
+        measure(d, *near, 1, "1'-0\" ±1/32\"", True)
+
+    if abs(p - round(p)) > 1e-6:
+        return img, None
+    return img, [(None, "How far is the target from the board?"),
+                 (True, "Within a foot of the board: ±1/32\""),
+                 ("warn", "4 ft away: ±1–3\". Watch the ±")][round(p)]
+
+
 def scene_plane(p):
     img, d = canvas()
     floor_y = 440
@@ -387,8 +447,9 @@ def scene_plane(p):
     if stage == 3:
         d.rectangle([0, floor_y, W, AREA_BOT], fill=BAD + (70,))
 
-    draw_board(d, quad_map(square_quad(110, 220, 96)))
-    label(d, (110, 292), "board", 20)
+    # Board right next to the door (A13: measure within about a foot of the board).
+    draw_board(d, quad_map(square_quad(580, 250, 84)))
+    label(d, (580, 314), "board", 20)
     d.rectangle([390, 190, 520, floor_y], fill=(150, 110, 80), outline=INK, width=4)
     d.ellipse([496, 318, 508, 330], fill=(250, 200, 60), outline=INK)
     # A cabinet standing in front of the wall: closer to the camera than the board.
@@ -403,31 +464,17 @@ def scene_plane(p):
             d.polygon(poly, fill=BAD + (80,))
         d.rectangle([fx0, fy0, fx1, fy1], fill=BAD + (80,))
 
-    def measure(a, b, t, text, ok):
-        if t <= 0:
-            return
-        e = (lerp(a[0], b[0], t), lerp(a[1], b[1], t))
-        d.line([a, e], fill=LINE, width=5)
-        for q in (a, e):
-            d.ellipse([q[0] - 7, q[1] - 7, q[0] + 7, q[1] + 7], fill=LINE, outline="white", width=2)
-        if t >= 1:
-            mx, my = (a[0] + b[0]) / 2, min(a[1], b[1]) - 24
-            label(d, (mx, my), text, 24, fg=GOOD if ok else BAD)
-            if not ok:
-                bb = d.textbbox((mx, my), text, font=font(24), anchor="mm")
-                d.line([(bb[0] - 4, my), (bb[2] + 4, my)], fill=BAD, width=3)
-
     t = p - stage if stage < 3 else 1.0
     if stage == 0:
-        measure((390, 260), (520, 260), t, "3'-0\"", True)
+        measure(d, (390, 260), (520, 260), t, "3'-0\"", True)
     elif stage == 1:
-        measure((390, 260), (520, 260), 1, "3'-0\"", True)
-        measure((fx0, 420), (fx1, 420), t, "2'-4\"", False)
+        measure(d, (390, 260), (520, 260), 1, "3'-0\"", True)
+        measure(d, (fx0, 420), (fx1, 420), t, "2'-4\"", False)
     elif stage == 2:
-        measure((fx0, 420), (fx1, 420), 1, "2'-4\"", False)
-        measure((60, 500), (150, 535), t, "1'-1\"", False)
+        measure(d, (fx0, 420), (fx1, 420), 1, "2'-4\"", False)
+        measure(d, (60, 500), (150, 535), t, "1'-1\"", False)
     else:
-        measure((60, 500), (150, 535), 1, "1'-1\"", False)
+        measure(d, (60, 500), (150, 535), 1, "1'-1\"", False)
 
     if abs(p - round(p)) > 1e-6:
         return img, None
@@ -439,35 +486,37 @@ def scene_plane(p):
 
 def scene_summary(_p):
     img, d = canvas()
-    do = ["3–10 ft away", "Within 45°", "Whole board in frame", "Paper taped flat", "1× lens"]
-    dont = ["0.5× lens", "Board at edge", "Steep angle", "Curls or glare", "Points off the board's plane"]
+    do = ["3–10 ft, hold still", "Within 45°", "Whole board in frame", "Board next to target",
+          "Paper taped flat", "1× lens"]
+    dont = ["0.5× lens", "Board at edge", "Past 60°", "Curls or glare", "Long reaches", "Off the board's plane"]
     for col, (items, ok, head) in enumerate(((do, True, "DO"), (dont, False, "DON'T"))):
         x = 24 + col * 308
-        d.rounded_rectangle([x, 96, x + 292, 528], radius=18, fill=(255, 255, 255),
+        d.rounded_rectangle([x, 96, x + 292, 540], radius=18, fill=(255, 255, 255),
                             outline=GOOD if ok else BAD, width=4)
         d.text((x + 146, 128), head, font=font(34), fill=GOOD if ok else BAD, anchor="mm")
-        y = 172
+        y = 166
         for it in items:
             (check_icon if ok else cross_icon)(d, x + 30, y + 12, 16)
             words, lines = it.split(), [""]
             for w_ in words:
                 trial = (lines[-1] + " " + w_).strip()
-                if font(25).getlength(trial) > 228:
+                if font(23).getlength(trial) > 228:
                     lines.append(w_)
                 else:
                     lines[-1] = trial
             for i, ln in enumerate(lines):
-                d.text((x + 54, y + i * 30 - 3), ln, font=font(25), fill=INK)
-            y += 34 + 30 * len(lines)
+                d.text((x + 54, y + i * 27 - 2), ln, font=font(23), fill=INK)
+            y += 30 + 27 * len(lines)
     return img, (False, "LIMIT: only the board's flat surface")
 
 
 SCENES = [
-    ("Stand 3–10 ft away", scene_distance, [2, 6, 14]),
-    ("Stay within 45° of straight-on", scene_angle, [0, 35, 70]),
+    ("Stand 3–10 ft away, hold still", scene_distance, [2, 6, 14]),
+    ("Stay within 45° of straight-on", scene_angle, [0, 35, 55, 70]),
     ("Whole board in the frame", scene_frame, [0, 1, 2]),
     ("Use the 1× lens, never 0.5×", scene_lens, [0, 1]),
     ("Paper flat, no glare", scene_paper, [0, 1, 2]),
+    ("Board right next to the target", scene_near, [0, 1, 2]),
     ("LIMIT: board's plane only", scene_plane, [0, 1, 2, 3]),
 ]
 
@@ -497,9 +546,14 @@ def decorate(img, title, idx, verdict, limit=False):
         d.rounded_rectangle(box, radius=30, fill=INK)
         d.text((W / 2, 596), text, font=fit_font(text, W - 100, 30), fill="white", anchor="mm")
         return img
-    d.rounded_rectangle(box, radius=30, fill=GOOD if ok else BAD)
+    color = WARN if ok == "warn" else GOOD if ok else BAD
+    d.rounded_rectangle(box, radius=30, fill=color)
     d.ellipse([38, 574, 82, 618], fill="white")
-    (check_icon if ok else cross_icon)(d, 60, 596, 17)
+    if ok == "warn":
+        d.ellipse([43, 579, 77, 613], fill=WARN)
+        d.text((60, 596), "!", font=font(26), fill="white", anchor="mm")
+    else:
+        (check_icon if ok else cross_icon)(d, 60, 596, 17)
     d.text((92, 596), text, font=fit_font(text, W - 140, 30), fill="white", anchor="lm")
     return img
 
