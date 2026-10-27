@@ -6,6 +6,7 @@ Every point handed to measure.py is in FULL-RESOLUTION image pixels.
 """
 from __future__ import annotations
 
+import html
 import io
 from pathlib import Path
 
@@ -45,6 +46,7 @@ st.markdown(
     <style>
       .big-result { font-size: 3.2rem; font-weight: 700; line-height: 1.1; margin: 0.2rem 0; }
       .sub-result { font-size: 1.1rem; color: #777; }
+      .pm { font-size: 1.6rem; font-weight: 500; color: #999; white-space: nowrap; }
       .badge { font-size: 1.3rem; font-weight: 600; }
       div[data-testid="stFileUploader"] label { font-size: 1.1rem; }
     </style>
@@ -115,6 +117,19 @@ def fmt_length(mm: float, units: str) -> str:
     if units == "mm":
         return f"{mm:,.1f} mm"
     return f'{mm / 25.4:,.2f}"'
+
+
+def fmt_pm_units(unc_mm: float | None, units: str) -> str:
+    """'± 1/16"' in ft-in; '± 0.8 mm' / '± 0.03"' in the other units."""
+    if unc_mm is None:
+        return ""
+    if units == "ft-in":
+        return measure.fmt_pm(unc_mm)
+    if not np.isfinite(unc_mm):
+        return "± ?"
+    if units == "mm":
+        return f"± {unc_mm:.1f} mm"
+    return f'± {unc_mm / 25.4:.2f}"'
 
 
 def fmt_area(mm2: float) -> str:
@@ -188,6 +203,8 @@ def draw_annotations(
             d.line(pts, fill=color, width=w)
             mid = ((pts[0][0] + pts[1][0]) / 2, (pts[0][1] + pts[1][1]) / 2)
             text = f'{m["label"]}: {fmt_length(m["mm"], units)}'
+            if m.get("unc") is not None:
+                text += " " + fmt_pm_units(m["unc"], units)
         else:
             d.polygon(pts, outline=color, width=w)
             mid = (sum(p[0] for p in pts) / len(pts), sum(p[1] for p in pts) / len(pts))
@@ -315,9 +332,11 @@ def _commit_point(p: tuple[float, float], label: str) -> None:
     pts.append(p)
     st.session_state.points = pts
     if not is_area and len(pts) == 2:
-        mm = measure.distance_mm(det.H, pts[0], pts[1])
+        # ~50 ms Monte Carlo over marker-corner noise; called once per line, not per rerun.
+        mm, unc, warn = measure.distance_with_uncertainty(det, pts[0], pts[1])
         st.session_state.measurements.append(
-            {"label": label, "kind": "length", "mm": mm, "points": list(pts)}
+            {"label": label, "kind": "length", "mm": mm, "unc": unc, "warn": warn,
+             "points": list(pts)}
         )
         st.session_state.points = []
     _clear_pending()
@@ -375,13 +394,14 @@ with col_side:
         )
         loupe_geom = (x0, y0, cw, ch)
         st.markdown("**Zoom: click the exact point**")
-        loupe_click = streamlit_image_coordinates(
-            crop,
-            key=f"loupe_{st.session_state.loupe_nonce}",
-            width=LOUPE_W,
-            image_format="PNG",
-            cursor="crosshair",
-        )
+        with st.container(width=LOUPE_W):     # cap at LOUPE_W, shrink if the column is narrower
+            loupe_click = streamlit_image_coordinates(
+                crop,
+                key=f"loupe_{st.session_state.loupe_nonce}",
+                width="stretch",
+                image_format="PNG",
+                cursor="crosshair",
+            )
         px_per_screen = cw / LOUPE_W
         ppm = (det.cal or {}).get("px_per_mm_at_target")
         prec = f" = about {px_per_screen / ppm:.2f} mm" if ppm else ""
@@ -448,13 +468,21 @@ with col_side:
     if st.session_state.measurements:
         m = st.session_state.measurements[-1]
         if m["kind"] == "length":
-            st.markdown(f'<div class="big-result">{fmt_length(m["mm"], units)}</div>', unsafe_allow_html=True)
+            pm = html.escape(fmt_pm_units(m.get("unc"), units))   # '± <1/16"' has a '<'
+            st.markdown(
+                f'<div class="big-result">{html.escape(fmt_length(m["mm"], units))}'
+                + (f' <span class="pm">{pm}</span>' if pm else "")
+                + "</div>",
+                unsafe_allow_html=True,
+            )
             alts = [u for u in ("ft-in", "mm", "decimal inches") if u != units]
             st.markdown(
                 f'<div class="sub-result">{m["label"]} · '
                 f'{fmt_length(m["mm"], alts[0])} · {fmt_length(m["mm"], alts[1])}</div>',
                 unsafe_allow_html=True,
             )
+            if m.get("warn"):
+                st.caption(f"⚠️ {m['warn']}")
         else:
             ft2 = m["mm2"] / 92_903.04
             st.markdown(f'<div class="big-result">{ft2:,.2f} ft²</div>', unsafe_allow_html=True)
@@ -477,10 +505,10 @@ if st.session_state.measurements:
     for m in st.session_state.measurements:
         if m["kind"] == "length":
             rows.append({"Label": m["label"], "Type": "Length", "Value": fmt_length(m["mm"], units),
-                         "mm": round(m["mm"], 1)})
+                         "±": fmt_pm_units(m.get("unc"), units), "mm": round(m["mm"], 1)})
         else:
             rows.append({"Label": m["label"], "Type": "Area", "Value": fmt_area(m["mm2"]),
-                         "mm": round(m["mm2"], 0)})
+                         "±": "", "mm": round(m["mm2"], 0)})
     st.table(rows)
 
     full_annotated = draw_annotations(
