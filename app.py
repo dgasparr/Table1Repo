@@ -123,7 +123,7 @@ def fmt_pm_units(unc_mm: float | None, units: str) -> str:
     """'± 1/16"' in ft-in; '± 0.8 mm' / '± 0.03"' in the other units."""
     if unc_mm is None:
         return ""
-    if units == "ft-in":
+    if units == "ft-in" and hasattr(measure, "fmt_pm"):
         return measure.fmt_pm(unc_mm)
     if not np.isfinite(unc_mm):
         return "± ?"
@@ -333,7 +333,10 @@ def _commit_point(p: tuple[float, float], label: str) -> None:
     st.session_state.points = pts
     if not is_area and len(pts) == 2:
         # ~50 ms Monte Carlo over marker-corner noise; called once per line, not per rerun.
-        mm, unc, warn = measure.distance_with_uncertainty(det, pts[0], pts[1])
+        if hasattr(measure, "distance_with_uncertainty"):
+            mm, unc, warn = measure.distance_with_uncertainty(det, pts[0], pts[1])
+        else:  # older measure.py (pre-A12) or a stale import: length only, no ±
+            mm, unc, warn = measure.distance_mm(det.H, pts[0], pts[1]), None, ""
         st.session_state.measurements.append(
             {"label": label, "kind": "length", "mm": mm, "unc": unc, "warn": warn,
              "points": list(pts)}
