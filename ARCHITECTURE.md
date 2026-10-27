@@ -24,7 +24,8 @@ app.py shows photo + outline + badge   user clicks p1, p2 (full-res px)
 | File | Owner | Purpose |
 |---|---|---|
 | `measure.py` | Pair A | **The contract.** Detection + math. No Streamlit imports |
-| `calcpad_markers.py` | Pair A (Benjamin) | Original script; `measure.py` wraps it |
+| `markers.py` | Pair A (Benjamin) | Benjamin's solver (detection, homography, uncertainty, rectify, CLI); `measure.py` wraps it |
+| `selftest.py` | Pair A | Synthetic oblique-photo test: `python selftest.py` must print SELFTEST PASSED |
 | `app.py` | Pair B | Streamlit UI. No OpenCV math here; call `measure.py` only |
 | `assets/capture_rules.png` | Pair C | Do/don't cartoon shown inside the app |
 | `tools/make_markers.py` | Pair C | Renders IDs 0–3 large to copy onto the pad |
@@ -45,6 +46,7 @@ class Detection:
     rms_mm: float | None         # corner-fit residual
     grade: str                   # "green" (<1 mm) | "yellow" (1–2) | "red" (>2) | "none"
     message: str                 # human-readable status / warning
+    cal: dict | None             # full markers.calibrate() record (optional; for uncertainty/rectify)
 
 def detect(image_bgr: np.ndarray) -> Detection
 def distance_mm(H, p1: tuple[float, float], p2: tuple[float, float]) -> float
@@ -57,7 +59,7 @@ def draw_overlay(image_bgr, det: Detection) -> np.ndarray  # marker outlines + I
 
 ## Board spec (do not change)
 
-`DICT_4X4_50`, IDs 0 (top-left), 1 (top-right), 2 (bottom-left), 3 (bottom-right). Cell ½" → marker 3"×3" (6×6 cells including the black border), gap 1", board 7"×7". Drawn on the 1" / ⅛" calc pad with a black Sharpie.
+`DICT_4X4_50`. Sheet A: IDs 0 (top-left), 1 (top-right), 2 (bottom-left), 3 (bottom-right). Sheet B: IDs 4–7 in the same layout. `detect()` accepts either sheet. Cell ½" → marker 3"×3" (6×6 cells including the black border), gap 1", board 7"×7". Drawn on the 1" / ⅛" calc pad with a black Sharpie.
 
 ## Known limit
 

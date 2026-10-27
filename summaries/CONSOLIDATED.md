@@ -54,7 +54,7 @@ Legend: ✅ = decided · 🔜 = future feature (roadmap slide)
 - 🟡 1–2 mm: usable, take care.
 - 🔴 over 2 mm: retake the photo. Likely causes are blur, curled paper, a marker drawn badly, or too steep an angle.
 
-It is one number already computed by `calcpad_markers.py`, so it just needs a colored label next to each measurement. Engineers will want to see it.
+It is one number already computed by `markers.py`, so it just needs a colored label next to each measurement. Engineers will want to see it.
 
 ---
 
@@ -86,7 +86,7 @@ Watch-outs:
 - ⚠️ Generate the marker images on a laptop (`cv2.aruco.generateImageMarker`) and copy them from the screen. **Do not** copy the ASCII patterns from the pasted summary; characters were lost in the paste.
 - Use a black Sharpie, never mirror or rotate a marker, and keep the white margins clean.
 
-**Core code = Benjamin's `calcpad_markers.py`.** Wrap it in importable functions:
+**Core code = Benjamin's `markers.py`.** Wrap it in importable functions:
 ```python
 detect(image) -> Detection        # corners, ids, H (px -> mm), rms_mm, overlay
 distance_mm(H, p1, p2) -> float
@@ -107,7 +107,7 @@ The UI builds against a stub that returns the identity matrix as `H` from minute
 
 | Time | Milestone |
 |---|---|
-| 1:00 | Start. Benjamin pushes `calcpad_markers.py`; Pair C starts drawing. Lunch at desks, staggered |
+| 1:00 | Start. Benjamin pushes `markers.py`; Pair C starts drawing. Lunch at desks, staggered |
 | **1:45 CP1** | Drawn board detected on a real phone photo (go/no-go); UI running on the stub |
 | **2:45 CP2** | **Real end to end:** phone photo → click → ft-in length + badge |
 | 3:15 | Error table done; fix the worst cases; area only if well ahead |
