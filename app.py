@@ -31,7 +31,7 @@ LOUPE_WINDOWS = [150, 300, 600]   # crop size in full-res px (smaller = finer)
 # Data copies sent to the browser are 2x their on-screen size so high-DPI
 # screens stay sharp. Clicks are always scaled back to full-res.
 ROOT = Path(__file__).parent
-CAPTURE_RULES = ROOT / "assets" / "capture_rules.png"
+CAPTURE_RULES = ROOT / "assets" / "capture_rules_animated.png"
 LOGO = ROOT / "logo.png"
 APP_NAME = "AruCurate"                 # product name from the logo
 APP_TITLE = "Site Photo Measure"
