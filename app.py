@@ -29,7 +29,10 @@ LOUPE_W = 420                 # CSS px on screen
 LOUPE_WINDOWS = [150, 300, 600]   # crop size in full-res px (smaller = finer)
 # Data copies sent to the browser are 2x their on-screen size so high-DPI
 # screens stay sharp. Clicks are always scaled back to full-res.
-CAPTURE_RULES = Path(__file__).parent / "assets" / "capture_rules.png"
+ROOT = Path(__file__).parent
+CAPTURE_RULES = ROOT / "assets" / "capture_rules.png"
+LOGO = ROOT / "Smartphone AR Room Measurement Scanner-logo.png"
+TUTORIAL = ROOT / "Tutorial Diagram.png"
 PLANE_WARNING = "Only measure points on the same flat surface as the board."
 HOW_IT_WORKS = (
     "Tape the hand-drawn marker board flat on the surface, take a photo, "
@@ -39,15 +42,59 @@ HOW_IT_WORKS = (
 GRADE_ICON = {"green": "🟢", "yellow": "🟡", "red": "🔴", "none": "⚪"}
 LINE_COLORS = ["#ff2d55", "#ff9500", "#5ac8fa", "#ffcc00", "#af52de", "#34c759"]
 
-st.set_page_config(page_title="Site Photo Measure", page_icon="📐", layout="wide")
+@st.cache_data(show_spinner=False)
+def load_asset(path: str, max_w: int = 1600, transparent: bool = True) -> Image.Image | None:
+    """Load a PNG. With transparent=True the near-white background is removed so
+    an illustration sits cleanly on the dark theme. Line-art diagrams with black
+    strokes should keep their white background (transparent=False)."""
+    f = Path(path)
+    if not f.exists():
+        return None
+    img = Image.open(f).convert("RGBA")
+    if img.width > max_w:
+        img = img.resize((max_w, round(img.height * max_w / img.width)), Image.LANCZOS)
+    if not transparent:
+        return img
+    a = np.asarray(img).astype(np.int16)
+    lightness = a[:, :, :3].min(axis=2)                  # 255 = pure white
+    alpha = np.clip((250 - lightness) * 255 / 20, 0, 255)   # fade out 230..250
+    a[:, :, 3] = np.minimum(a[:, :, 3], alpha)
+    return Image.fromarray(a.astype(np.uint8), "RGBA")
+
+
+def current_theme() -> str:
+    try:
+        return st.context.theme.type            # "light" | "dark"
+    except Exception:
+        return "light"
+
+
+def set_theme(base: str) -> None:
+    """Switch the Streamlit theme at runtime (uses a private config hook)."""
+    try:
+        st._config.set_option("theme.base", base)
+    except Exception:
+        pass
+
+
+logo_img = load_asset(str(LOGO))
+st.set_page_config(
+    page_title="Site Photo Measure",
+    page_icon=logo_img if logo_img is not None else "📐",
+    layout="wide",
+)
+if logo_img is not None:
+    st.logo(logo_img, size="large")
 
 st.markdown(
     """
     <style>
       .big-result { font-size: 3.2rem; font-weight: 700; line-height: 1.1; margin: 0.2rem 0; }
-      .sub-result { font-size: 1.1rem; color: #777; }
-      .pm { font-size: 1.6rem; font-weight: 500; color: #999; white-space: nowrap; }
+      .sub-result { font-size: 1.1rem; opacity: 0.65; }
+      .pm { font-size: 1.6rem; font-weight: 500; opacity: 0.6; white-space: nowrap; }
       .badge { font-size: 1.3rem; font-weight: 600; }
+      .app-title { font-size: 2.4rem; font-weight: 700; line-height: 1.1; margin: 0; }
+      .app-sub { font-size: 1.05rem; opacity: 0.75; margin-top: 0.3rem; }
       div[data-testid="stFileUploader"] label { font-size: 1.1rem; }
     </style>
     """,
@@ -228,6 +275,11 @@ def draw_annotations(
 # ----------------------------------------------------------------------------
 with st.sidebar:
     st.header("Settings")
+    is_dark = current_theme() == "dark"
+    want_dark = st.toggle("🌙 Dark mode", value=is_dark)
+    if want_dark != is_dark:
+        set_theme("dark" if want_dark else "light")
+        st.rerun()
     mode = st.radio("Mode", ["Length (2 points)", "Area (N points)"], index=0)
     units = st.radio("Units", ["ft-in", "mm", "decimal inches"], index=0, horizontal=True)
     view_w = st.slider("Image size (px wide)", 500, 1600, VIEW_W, step=50)
@@ -253,11 +305,30 @@ with st.sidebar:
             "*(Cartoon from Pair C appears here once `assets/capture_rules.png` lands.)*"
         )
 
+    tutorial_img = load_asset(str(TUTORIAL), transparent=False)
+    if tutorial_img is not None:
+        with st.expander("📖 Tutorial: the marker board", expanded=False):
+            st.image(tutorial_img, width="stretch")
+            st.caption(
+                "Four ArUco markers (IDs 0–3) on one flat sheet. Tape it to the surface "
+                "you want to measure; the app measures along that surface."
+            )
+
 # ----------------------------------------------------------------------------
 # Main
 # ----------------------------------------------------------------------------
-st.title("📐 Site Photo Measure")
-st.markdown(f"**How it works:** {HOW_IT_WORKS}")
+hc1, hc2 = st.columns([1, 9], vertical_alignment="center")
+with hc1:
+    if logo_img is not None:
+        st.image(logo_img, width=110)
+    else:
+        st.markdown("# 📐")
+with hc2:
+    st.markdown(
+        '<div class="app-title">Site Photo Measure</div>'
+        f'<div class="app-sub"><b>How it works:</b> {HOW_IT_WORKS}</div>',
+        unsafe_allow_html=True,
+    )
 
 uploaded = st.file_uploader(
     "Upload a photo (phones: choose *Take Photo*)",
@@ -270,6 +341,20 @@ if uploaded is None:
     st.session_state.bgr = None
     st.session_state.det = None
     st.info("Upload a photo that shows the whole marker board to begin.")
+    tutorial_img = load_asset(str(TUTORIAL), transparent=False)
+    if tutorial_img is not None:
+        tc1, tc2 = st.columns([3, 2], gap="large")
+        with tc1:
+            st.image(tutorial_img, width="stretch")
+        with tc2:
+            st.markdown(
+                "#### Three steps\n"
+                "1. **Tape the marker board** (IDs 0–3) flat on the surface you want to measure.\n"
+                "2. **Take a photo** from 3–10 ft, 1× lens, whole board in frame.\n"
+                "3. **Upload and click two points** on that surface. Read the length "
+                "in ft-in with a ± tolerance.\n\n"
+                "Capture rules are in the sidebar."
+            )
     st.stop()
 
 # Decode + detect once per upload (not on every click).
