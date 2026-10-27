@@ -277,11 +277,17 @@ with st.sidebar:
     if CAPTURE_RULES.exists():
         st.image(str(CAPTURE_RULES), width="stretch")
     st.markdown(
-        "- ✅ 3–10 ft away, within 45° of straight-on\n"
-        "- ✅ Whole board in frame, paper flat, 1× lens\n"
-        "- ❌ 0.5× lens, board cut off or at the edge\n"
-        "- ❌ Steep angle, curled paper, glare\n"
-        "- ❌ Measuring off the board's surface"
+        "**Do**\n"
+        "- Stand 3–10 ft away, within 45° of straight-on\n"
+        "- Keep the whole board in frame\n"
+        "- Keep the paper flat\n"
+        "- Use the 1× lens\n\n"
+        "**Don't**\n"
+        "- Use the 0.5× lens\n"
+        "- Cut the board off or put it at the edge of the frame\n"
+        "- Shoot at a steep angle\n"
+        "- Allow curled paper or glare\n"
+        "- Measure off the board's surface"
     )
     if TUTORIAL.exists():
         # Served via Streamlit's static route; the link opens it full size in a new tab.
