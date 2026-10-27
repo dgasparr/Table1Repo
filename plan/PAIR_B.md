@@ -19,7 +19,7 @@
   *Done when:* a phone photo arrives in the app. Report the steps at CP1.
 
 ## Block 2 → CP2 (~2:30), on real `detect()`
-- [ ] **B6. Swap to real.** After the CP1 merge, test with Pair C's photos. Fix anything that breaks (big phone images, EXIF rotation: apply `ImageOps.exif_transpose` before converting to BGR).
+- [ ] **B6. Swap to real.** Once Pair A swaps in real detection (around CP1), `git pull` and test with Pair C's photos. Fix anything that breaks (big phone images, EXIF rotation: apply `ImageOps.exif_transpose` before converting to BGR).
 - [ ] **B7. Single-plane warning.** A permanent caption: "Only measure points on the same flat surface as the board."
 - [ ] **B8. Capture-rules help.** An expander or sidebar showing `assets/capture_rules.png` (show placeholder text until Pair C delivers it).
 - [ ] **B9. Measurement list.** Keep each measurement (label, value) in a small table on the page.

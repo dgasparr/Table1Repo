@@ -103,7 +103,7 @@ The UI builds against a stub that returns the identity matrix as `H` from minute
 |---|---|---|---|
 | **A: Detection & math** | Benjamin + 1 | `measure.py` (wraps Benjamin's script), ft-in formatting, fit badge, then area | `detect()` works on 8 of 10 real photos |
 | **B: UI** | 2 | `app.py`: upload, click, line, outline, badge, units, phone access | Works on the stub, then on real `detect()` |
-| **C: Target, test rig, demo** | 2 | Draw the board (+ a spare), capture-rules cartoon, tape-measured answer key, photo set (straight-on / 30° / 60° / small / near the edge), merges, error table, demo script, roadmap slide | Error table filled in; demo rehearsed |
+| **C: Target, test rig, demo** | 2 | Draw the board (+ a spare), capture-rules cartoon, tape-measured answer key, photo set (straight-on / 30° / 60° / small / near the edge), error table, demo script, roadmap slide | Error table filled in; demo rehearsed |
 
 | Time | Milestone |
 |---|---|

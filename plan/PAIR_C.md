@@ -3,13 +3,13 @@
 **Team:** Tuan + Ryan
 
 **Mission:** give Pairs A and B real inputs fast, prove accuracy with numbers, and own the demo.
-**You own:** `tests/`, `assets/`, `tools/`, `pyproject.toml`, `setup_venv.bat`, `.gitignore`, and **merging into `main`** at each checkpoint.
+**You own:** `tests/`, `assets/`, `tools/`, `pyproject.toml`, `setup_venv.bat`, `.gitignore`, and the demo.
 **Don't edit:** `measure.py`, `app.py`.
 
-Split the pair: **C-field** (drawing, measuring, photos) and **C-desk** (Claude: scripts, cartoon, merges). Swap if one side runs ahead.
+Split the pair: **C-field** (drawing, measuring, photos) and **C-desk** (Claude: scripts, cartoon, error table, demo). Swap if one side runs ahead.
 
 ## Block 1 → CP1 (~1:00)
-- [ ] **C1 (desk). Repo check.** Daniel pushes `main` and the branches `pair-a`, `pair-b`, `pair-c`. Clone, run the setup in README, and confirm `setup_venv.bat` works (it prints OK with aruco: True). From CP1 on, you own merging into `main`.
+- [ ] **C1 (desk). Repo check.** Clone, run the setup in README, and confirm `setup_venv.bat` works (it prints OK with aruco: True).
 - [ ] **C2 (desk). Marker generator.** `tools/make_markers.py`: render `DICT_4X4_50` IDs 0–3 with `cv2.aruco.generateImageMarker` as large 6×6 grids with row/column numbers, plus the full 2×2 board preview (ID 0 top-left, 1 top-right, 2 bottom-left, 3 bottom-right). Show them on screen for C-field to copy.
   ⚠️ **Do not copy the ASCII patterns from the summaries** (the paste corrupted them).
 - [ ] **C3 (field). Draw the board** on the 1" / ⅛" pad: cell ½" (4 small squares), marker 3", gap 1", board 7"×7", ¾" margin. Use a black Sharpie, fill cells fully, keep the whites clean, never mirror a marker. Measure the outer edges with a ruler and write down the actual size. **Draw a spare** if time allows.
@@ -23,7 +23,7 @@ Split the pair: **C-field** (drawing, measuring, photos) and **C-desk** (Claude:
   - ❌ 0.5× lens · ❌ board at the edge or cut off · ❌ steep angle · ❌ curled paper or glare · ❌ measuring off the board's surface
 
   Either have Claude draw it (matplotlib or SVG to PNG), or hand-draw it and photograph it. Keep it simple and readable on a phone.
-- [ ] **C8 (desk). Checkpoint merges.** At CP1 and CP2, merge `pair-a`, `pair-b`, `pair-c` into `main`, run the app, and tell everyone to `git merge main`.
+- [ ] **C8 (desk). Checkpoint run.** At each checkpoint, `git pull` and run the app on the big screen with the newest photos.
 
 ## Block 3 → CP3 FREEZE (3:45)
 - [ ] **C9 (both). Error table.** Use the app to measure every answer-key target in every photo. Fill `tests/error_table.csv` with `photo,target,true_in,app_in,error_in,error_pct,grade`. Pull out the headline numbers: median error, worst case and why.
