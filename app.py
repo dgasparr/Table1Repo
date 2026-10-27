@@ -22,10 +22,12 @@ import measure
 # On-screen viewing box. Every photo is shown inside this frame regardless of
 # its pixel size (landscape fills the width, portrait fills the height).
 VIEW_W = 900                  # CSS px, default; adjustable in the sidebar
-VIEW_H = 600
-# Data copy sent to the browser: 2x the view so high-DPI screens stay sharp.
-# Clicks happen on this copy and are scaled back to full-res.
-DISPLAY_WIDTH = 2 * VIEW_W
+VIEW_H = 900                  # portrait photos fill this height
+# Zoom loupe: a magnified crop around a rough click, for precise placement.
+LOUPE_W = 420                 # CSS px on screen
+LOUPE_WINDOWS = [150, 300, 600]   # crop size in full-res px (smaller = finer)
+# Data copies sent to the browser are 2x their on-screen size so high-DPI
+# screens stay sharp. Clicks are always scaled back to full-res.
 CAPTURE_RULES = Path(__file__).parent / "assets" / "capture_rules.png"
 PLANE_WARNING = "Only measure points on the same flat surface as the board."
 HOW_IT_WORKS = (
@@ -62,6 +64,16 @@ def _init_state() -> None:
     ss.setdefault("measurements", [])     # dicts: label, kind, mm/mm2, points
     ss.setdefault("last_click", None)     # dedupe the component's repeated value
     ss.setdefault("click_nonce", 0)       # bump to reset the click component
+    ss.setdefault("pending", None)        # rough click awaiting loupe refinement
+    ss.setdefault("last_loupe_click", None)
+    ss.setdefault("loupe_nonce", 0)
+
+
+def _clear_pending() -> None:
+    ss = st.session_state
+    ss.pending = None
+    ss.last_loupe_click = None
+    ss.loupe_nonce += 1
 
 
 def _reset_for_new_image() -> None:
@@ -70,12 +82,14 @@ def _reset_for_new_image() -> None:
     ss.measurements = []
     ss.last_click = None
     ss.click_nonce += 1
+    _clear_pending()
 
 
 def _clear_points() -> None:
     st.session_state.points = []
     st.session_state.last_click = None
     st.session_state.click_nonce += 1
+    _clear_pending()
 
 
 _init_state()
@@ -135,22 +149,25 @@ def draw_annotations(
     measurements: list[dict],
     points: list[tuple[float, float]],
     units: str,
+    offset: tuple[float, float] = (0.0, 0.0),
+    marker_scale: float = 1.0,
 ) -> Image.Image:
     """Draw finished measurements and in-progress points on a copy of img.
 
     scale = img_width / full_res_width (points are stored full-res).
+    offset = full-res (x, y) of img's top-left corner, for crops.
     Marker sizes are relative to the image width, so they look the same on the
     screen copy and on the full-res download.
     """
     out = img.copy()
     d = ImageDraw.Draw(out)
     W = out.width
-    w = max(2, W // 600)                 # stroke
-    r = max(6, W // 160)                 # crosshair ring radius
-    font = _font(max(16, W // 55))
+    w = max(2, round(W / 600 * max(1.0, marker_scale / 2)))   # stroke
+    r = max(6, round(W / 160 * marker_scale))                 # crosshair ring radius
+    font = _font(max(16, round(W / 55 * marker_scale)))
 
     def s(p):
-        return (p[0] * scale, p[1] * scale)
+        return ((p[0] - offset[0]) * scale, (p[1] - offset[1]) * scale)
 
     def crosshair(p, color, halo=False):
         x, y = p
@@ -198,6 +215,11 @@ with st.sidebar:
     units = st.radio("Units", ["ft-in", "mm", "decimal inches"], index=0, horizontal=True)
     view_w = st.slider("Image size (px wide)", 500, 1600, VIEW_W, step=50)
     view_h = round(view_w * VIEW_H / VIEW_W)
+    zoom_on = st.toggle("Precise placement (zoom loupe)", value=True,
+                        help="First click marks a rough spot; a magnified crop appears "
+                             "so you can place the point exactly.")
+    zoom_win = st.select_slider("Loupe window (photo px)", options=LOUPE_WINDOWS, value=300,
+                                disabled=not zoom_on)
     st.caption(PLANE_WARNING)
 
     st.divider()
@@ -282,9 +304,26 @@ display = overlay_pil.resize((disp_w, disp_h), Image.LANCZOS)
 scale_disp = disp_w / full_w           # full-res -> display
 
 is_area = mode.startswith("Area")
-needed = None if is_area else 2
+pending = st.session_state.pending if zoom_on else None
 
-col_img, col_side = st.columns([3, 1], gap="large")
+
+def _commit_point(p: tuple[float, float], label: str) -> None:
+    """Add a final full-res point; close a length when two are in."""
+    pts = st.session_state.points
+    if not is_area and len(pts) >= 2:
+        pts = []                                  # third click starts a new line
+    pts.append(p)
+    st.session_state.points = pts
+    if not is_area and len(pts) == 2:
+        mm = measure.distance_mm(det.H, pts[0], pts[1])
+        st.session_state.measurements.append(
+            {"label": label, "kind": "length", "mm": mm, "points": list(pts)}
+        )
+        st.session_state.points = []
+    _clear_pending()
+
+
+col_img, col_side = st.columns([3, 2], gap="large")
 
 with col_side:
     st.subheader("Measure")
@@ -314,13 +353,51 @@ with col_side:
             st.rerun()
     n_pts = len(st.session_state.points)
     if is_area:
-        st.caption(f"{n_pts} point(s) clicked. Click ≥3, then **Close shape**.")
+        st.caption(f"{n_pts} point(s) placed. Click >=3, then **Close shape**.")
     else:
-        st.caption(f"{n_pts}/2 points clicked. A third click starts a new line.")
+        st.caption(f"{n_pts}/2 points placed. A third click starts a new line.")
+
+    # ---- Zoom loupe: magnified crop around the pending rough click
+    loupe_click = None
+    loupe_geom = None
+    if pending is not None and det.found:
+        cw, ch = min(zoom_win, full_w), min(zoom_win, full_h)
+        x0 = int(np.clip(round(pending[0] - cw / 2), 0, full_w - cw))
+        y0 = int(np.clip(round(pending[1] - ch / 2), 0, full_h - ch))
+        crop = overlay_pil.crop((x0, y0, x0 + cw, y0 + ch))
+        up = 2 * LOUPE_W / cw                     # 2x for high-DPI
+        crop = crop.resize((round(cw * up), round(ch * up)),
+                           Image.LANCZOS if up < 1 else Image.BICUBIC)
+        crop = draw_annotations(
+            crop, up, st.session_state.measurements,
+            st.session_state.points + [pending], units, offset=(x0, y0),
+            marker_scale=3.0,                     # crop is small; keep crosshair visible
+        )
+        loupe_geom = (x0, y0, cw, ch)
+        st.markdown("**Zoom: click the exact point**")
+        loupe_click = streamlit_image_coordinates(
+            crop,
+            key=f"loupe_{st.session_state.loupe_nonce}",
+            width=LOUPE_W,
+            image_format="PNG",
+            cursor="crosshair",
+        )
+        px_per_screen = cw / LOUPE_W
+        ppm = (det.cal or {}).get("px_per_mm_at_target")
+        prec = f" = about {px_per_screen / ppm:.2f} mm" if ppm else ""
+        st.caption(f"{cw} px window - {px_per_screen:.2f} photo px per screen px{prec}")
+        c1, c2 = st.columns(2)
+        if c1.button("Use rough point", width="stretch"):
+            _commit_point(pending, label)
+            st.rerun()
+        if c2.button("Cancel", width="stretch"):
+            _clear_pending()
+            st.rerun()
 
 with col_img:
+    in_progress = st.session_state.points + ([pending] if pending is not None else [])
     annotated = draw_annotations(
-        display, scale_disp, st.session_state.measurements, st.session_state.points, units
+        display, scale_disp, st.session_state.measurements, in_progress, units
     )
     if det.found:
         # Container caps the photo at box_w but lets it shrink to fit a narrow
@@ -338,31 +415,32 @@ with col_img:
         st.image(annotated, width=box_w)
         click = None
 
+# Loupe click -> precise point. (Checked first so it wins over a stale overview value.)
+if loupe_click is not None and loupe_click != st.session_state.last_loupe_click:
+    st.session_state.last_loupe_click = loupe_click
+    x0, y0, cw, ch = loupe_geom
+    rw = loupe_click.get("width") or LOUPE_W
+    rh = loupe_click.get("height") or round(LOUPE_W * ch / cw)
+    x_full = float(np.clip(x0 + loupe_click["x"] * cw / rw, 0, full_w - 1))
+    y_full = float(np.clip(y0 + loupe_click["y"] * ch / rh, 0, full_h - 1))
+    _commit_point((x_full, y_full), label)
+    st.rerun()
+
 # A rerun re-reports the component's last value; only act on a *new* click.
 if click is not None and click != st.session_state.last_click:
     st.session_state.last_click = click
-    # Component reports {x, y} relative to the *rendered* <img> (which may be
-    # shrunk on a phone) plus its rendered width/height; normalise to the
-    # display copy we gave it, then to full-res.
+    # Component reports {x, y} relative to the *rendered* <img> plus its
+    # rendered width/height; normalise to the display copy, then to full-res.
     rw = click.get("width") or disp_w
     rh = click.get("height") or disp_h
-    x_disp = click["x"] * disp_w / rw
-    y_disp = click["y"] * disp_h / rh
-    x_full = float(np.clip(x_disp / scale_disp, 0, full_w - 1))
-    y_full = float(np.clip(y_disp / scale_disp, 0, full_h - 1))
-
-    pts = st.session_state.points
-    if not is_area and len(pts) >= 2:
-        pts = []                                  # third click starts a new line
-    pts.append((x_full, y_full))
-    st.session_state.points = pts
-
-    if not is_area and len(pts) == 2:
-        mm = measure.distance_mm(det.H, pts[0], pts[1])
-        st.session_state.measurements.append(
-            {"label": label, "kind": "length", "mm": mm, "points": list(pts)}
-        )
-        st.session_state.points = []
+    x_full = float(np.clip(click["x"] * disp_w / rw / scale_disp, 0, full_w - 1))
+    y_full = float(np.clip(click["y"] * disp_h / rh / scale_disp, 0, full_h - 1))
+    if zoom_on:
+        st.session_state.pending = (x_full, y_full)   # refine in the loupe
+        st.session_state.last_loupe_click = None
+        st.session_state.loupe_nonce += 1
+    else:
+        _commit_point((x_full, y_full), label)
     st.rerun()
 
 # --- Result -----------------------------------------------------------------
