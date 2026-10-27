@@ -28,7 +28,7 @@
 ## Block 3 → CP3 FREEZE (3:45)
 - [ ] ✨ **A9. `area_mm2()` verified** on a letter sheet (8.5×11 in = 60,322 mm²).
 - [ ] ✨ **A10. Rectified view helper** (`rectify(image, det) -> image`, top-down at about 4 px/mm). Only if Pair B wants it; agree on the signature at CP2.
-- [ ] ✨ **A12. "±" uncertainty on every length** (on hold; about 15 min for A + 5 min for B). Shows `8'-4 1/2" ± 1/16"` so engineers know how far to trust a number. Benjamin's `markers.measure()` already computes it: it reruns the solve a few hundred times with tiny corner wobbles and takes the spread, and it warns when the points are far from the board. It adds two functions to the agreed interface, so **agree with Pair B first**:
+- [x] ✨ **A12. "±" uncertainty on every length.** ✅ Built and tested. Real photos: the board's 7" edge reads `0'-7" ± 1/16"` in 30–50 ms. A point far off the board gives a large ± plus a warning (17.8× board size → ± 16 1/2"). Handoff: `plan/handoff_A12_for_pair_B.md`. Shows `8'-4 1/2" ± 1/16"` so engineers know how far to trust a number. Benjamin's `markers.measure()` already computes it: it reruns the solve a few hundred times with tiny corner wobbles and takes the spread, and it warns when the points are far from the board. It adds two functions to the agreed interface, so **agree with Pair B first**:
   ```python
   def distance_with_uncertainty(det, p1, p2) -> tuple[float, float, str]:  # (mm, ±mm 1-sigma, warning or "")
   def fmt_pm(unc_mm) -> str:  # '± 1/16"', or '± <1/16"' when it rounds to zero
