@@ -123,6 +123,9 @@ def _detector(dictionary: str) -> cv2.aruco.ArucoDetector:
     p.adaptiveThreshWinSizeMax = 53
     p.polygonalApproxAccuracyRate = 0.05
     p.errorCorrectionRate = 0.8
+    # Sample bits from the cell centres only: copes with Sharpie hatching and wobbly cell edges
+    p.perspectiveRemovePixelPerCell = 8
+    p.perspectiveRemoveIgnoredMarginPerCell = 0.25
     return cv2.aruco.ArucoDetector(d, p)
 
 
